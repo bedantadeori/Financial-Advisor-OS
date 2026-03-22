@@ -85,7 +85,7 @@ export default function Goals() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-zinc-500">Deadline (Optional)</label>
-                <Input type="date" {...register('deadline')} />
+                <Input type="date" className="w-full" {...register('deadline')} />
               </div>
               <div className="md:col-span-3 flex justify-end gap-2 pt-4">
                 <Button type="button" variant="secondary" onClick={() => {

@@ -88,7 +88,7 @@ export default function FixedExpenses() {
           setIsAddOpen(true);
         }} className="gap-2">
           <Plus className="w-4 h-4" />
-          Add Fixed Expense
+          Add Fixed Exp.
         </Button>
       </header>
 
@@ -130,6 +130,7 @@ export default function FixedExpenses() {
                     type="number" 
                     min="1" 
                     max="28" 
+                    className="w-full"
                     {...register('due_day', { 
                       required: billingType === 'bank',
                       min: 1,

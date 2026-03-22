@@ -74,7 +74,7 @@ export default function App() {
               </button>
             </header>
 
-            <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen scrollbar-thin scrollbar-thumb-zinc-800">
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/transactions" element={<Transactions />} />
