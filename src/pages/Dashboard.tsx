@@ -44,7 +44,10 @@ export default function Dashboard() {
   const liquidNetWorth = bankBalance + cashBalance - ccDebt;
 
   // CC Billing Info
-  const latestBill = bills[0];
+  const today = new Date().toISOString().split('T')[0];
+  const upcomingBill = [...bills]
+    .filter(b => b.due_date && b.due_date >= today)
+    .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))[0];
 
   return (
     <div className="space-y-6">
@@ -88,21 +91,21 @@ export default function Dashboard() {
             <CardTitle>CC Billing Engine</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {latestBill ? (
+            {upcomingBill ? (
               <>
                 <div className="flex justify-between items-end">
                   <div>
                     <p className="text-xs text-zinc-500">Upcoming Bill Due</p>
-                    <p className="text-xl font-bold">{formatCurrency(latestBill.bill_amount)}</p>
+                    <p className="text-xl font-bold">{formatCurrency(upcomingBill.bill_amount)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-zinc-500">Due Date</p>
-                    <p className="text-sm font-medium">{formatDate(latestBill.due_date)}</p>
+                    <p className="text-sm font-medium">{formatDate(upcomingBill.due_date)}</p>
                   </div>
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">Cycle: {formatDate(latestBill.statement_date)}</span>
+                    <span className="text-zinc-500">Cycle: {formatDate(upcomingBill.statement_date)}</span>
                   </div>
                   <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-red-500 h-full w-[65%]" />
