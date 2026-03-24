@@ -396,131 +396,155 @@ export default function Transactions() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-zinc-500 border-b border-zinc-800">
-                  <th 
-                    className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
-                    onClick={() => handleSort('transaction_date')}
+            {isLoading ? (
+              <div className="p-12 text-center text-zinc-500 animate-pulse">
+                <Search className="w-8 h-8 mx-auto mb-4 opacity-20" />
+                <p>Loading transactions...</p>
+              </div>
+            ) : filteredAndSortedTransactions.length === 0 ? (
+              <div className="p-12 text-center text-zinc-500">
+                <Filter className="w-8 h-8 mx-auto mb-4 opacity-20" />
+                <p>No transactions found matching your criteria.</p>
+                {(searchTerm || filters.type || filters.status || filters.accountId || filters.categoryId) && (
+                  <Button 
+                    variant="link" 
+                    className="mt-2 text-emerald-500"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setFilters({ type: '', status: '', accountId: '', categoryId: '' });
+                    }}
                   >
-                    <div className="flex items-center">
-                      Date <SortIcon column="transaction_date" />
-                    </div>
-                  </th>
-                  <th 
-                    className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
-                    onClick={() => handleSort('description')}
-                  >
-                    <div className="flex items-center">
-                      Description <SortIcon column="description" />
-                    </div>
-                  </th>
-                  <th 
-                    className="pb-2 font-medium hidden md:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
-                    onClick={() => handleSort('type')}
-                  >
-                    <div className="flex items-center">
-                      Type <SortIcon column="type" />
-                    </div>
-                  </th>
-                  <th 
-                    className="pb-2 font-medium hidden lg:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
-                    onClick={() => handleSort('account')}
-                  >
-                    <div className="flex items-center">
-                      Account <SortIcon column="account" />
-                    </div>
-                  </th>
-                  <th 
-                    className="pb-2 font-medium hidden sm:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
-                    onClick={() => handleSort('category')}
-                  >
-                    <div className="flex items-center">
-                      Category <SortIcon column="category" />
-                    </div>
-                  </th>
-                  <th 
-                    className="pb-2 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors"
-                    onClick={() => handleSort('amount')}
-                  >
-                    <div className="flex items-center justify-end">
-                      Amount <SortIcon column="amount" />
-                    </div>
-                  </th>
-                  <th className="pb-2 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {filteredAndSortedTransactions.map((t: any) => (
-                  <tr key={t.id} className="group hover:bg-zinc-800/50">
-                    <td className="py-2 text-zinc-400 whitespace-nowrap">{formatDate(t.transaction_date)}</td>
-                    <td className="py-2">
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-medium truncate max-w-[120px] sm:max-w-none">{t.description}</span>
-                        <div className="flex items-center gap-2 md:hidden">
-                          <span className={cn(
-                            "text-[8px] uppercase font-bold",
-                            t.type === 'income' ? 'text-emerald-500' :
-                            t.type === 'expense' ? 'text-red-500' :
-                            'text-blue-500'
-                          )}>
-                            {t.type}
-                          </span>
-                          {t.status === 'pending' && (
-                            <span className="text-[8px] text-amber-500 uppercase font-bold">Pending</span>
-                          )}
-                        </div>
+                    Clear all filters
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-zinc-500 border-b border-zinc-800">
+                    <th 
+                      className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('transaction_date')}
+                    >
+                      <div className="flex items-center">
+                        Date <SortIcon column="transaction_date" />
                       </div>
-                    </td>
-                    <td className="py-2 hidden md:table-cell">
-                      <span className={cn(
-                        "px-1.5 py-0.5 rounded text-[10px] uppercase font-bold",
-                        t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' :
-                        t.type === 'expense' ? 'bg-red-500/10 text-red-500' :
-                        'bg-blue-500/10 text-blue-500'
-                      )}>
-                        {t.type}
-                      </span>
-                    </td>
-                    <td className="py-2 hidden lg:table-cell">
-                      <div className="flex flex-col text-xs text-zinc-400">
-                        {t.from_account?.name && <span>From: {t.from_account.name}</span>}
-                        {t.to_account?.name && <span>To: {t.to_account.name}</span>}
+                    </th>
+                    <th 
+                      className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('description')}
+                    >
+                      <div className="flex items-center">
+                        Description <SortIcon column="description" />
                       </div>
-                    </td>
-                    <td className="py-2 text-zinc-400 hidden sm:table-cell">{t.category?.name || '-'}</td>
-                    <td className={cn(
-                      "py-2 text-right font-mono font-bold",
-                      t.type === 'income' ? 'text-emerald-500' : 
-                      t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
-                    )}>
-                      {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
-                      {formatCurrency(t.amount)}
-                    </td>
-                    <td className="py-2 text-right">
-                      <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7"
-                          onClick={() => handleEdit(t)}
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 text-red-500 hover:text-red-400"
-                          onClick={() => handleDelete(t.id)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                    </th>
+                    <th 
+                      className="pb-2 font-medium hidden md:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('type')}
+                    >
+                      <div className="flex items-center">
+                        Type <SortIcon column="type" />
                       </div>
-                    </td>
+                    </th>
+                    <th 
+                      className="pb-2 font-medium hidden lg:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('account')}
+                    >
+                      <div className="flex items-center">
+                        Account <SortIcon column="account" />
+                      </div>
+                    </th>
+                    <th 
+                      className="pb-2 font-medium hidden sm:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('category')}
+                    >
+                      <div className="flex items-center">
+                        Category <SortIcon column="category" />
+                      </div>
+                    </th>
+                    <th 
+                      className="pb-2 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('amount')}
+                    >
+                      <div className="flex items-center justify-end">
+                        Amount <SortIcon column="amount" />
+                      </div>
+                    </th>
+                    <th className="pb-2 font-medium text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {filteredAndSortedTransactions.map((t: any) => (
+                    <tr key={t.id} className="group hover:bg-zinc-800/50">
+                      <td className="py-2 text-zinc-400 whitespace-nowrap">{formatDate(t.transaction_date)}</td>
+                      <td className="py-2">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium truncate max-w-[120px] sm:max-w-none">{t.description}</span>
+                          <div className="flex items-center gap-2 md:hidden">
+                            <span className={cn(
+                              "text-[8px] uppercase font-bold",
+                              t.type === 'income' ? 'text-emerald-500' :
+                              t.type === 'expense' ? 'text-red-500' :
+                              'text-blue-500'
+                            )}>
+                              {t.type}
+                            </span>
+                            {t.status === 'pending' && (
+                              <span className="text-[8px] text-amber-500 uppercase font-bold">Pending</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2 hidden md:table-cell">
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded text-[10px] uppercase font-bold",
+                          t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' :
+                          t.type === 'expense' ? 'bg-red-500/10 text-red-500' :
+                          'bg-blue-500/10 text-blue-500'
+                        )}>
+                          {t.type}
+                        </span>
+                      </td>
+                      <td className="py-2 hidden lg:table-cell">
+                        <div className="flex flex-col text-xs text-zinc-400">
+                          {t.from_account?.name && <span>From: {t.from_account.name}</span>}
+                          {t.to_account?.name && <span>To: {t.to_account.name}</span>}
+                        </div>
+                      </td>
+                      <td className="py-2 text-zinc-400 hidden sm:table-cell">{t.category?.name || '-'}</td>
+                      <td className={cn(
+                        "py-2 text-right font-mono font-bold",
+                        t.type === 'income' ? 'text-emerald-500' : 
+                        t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
+                      )}>
+                        {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
+                        {formatCurrency(t.amount)}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7"
+                            onClick={() => handleEdit(t)}
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-red-500 hover:text-red-400"
+                            onClick={() => handleDelete(t.id)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </CardContent>
       </Card>
