@@ -20,7 +20,7 @@ export function useTransactions(filters?: any) {
           to_account:accounts!transactions_to_account_id_fkey(name)
         `)
         .order('transaction_date', { ascending: false })
-        .limit(100);
+        .limit(500);
 
       if (filters?.type) query = query.eq('type', filters.type);
       if (filters?.status) query = query.eq('status', filters.status);

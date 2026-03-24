@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTransactions } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
@@ -7,17 +7,106 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { Plus, Filter, Search, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Filter, Search, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
 
 export default function Transactions() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'transaction_date',
+    direction: 'desc'
+  });
+  const [filters, setFilters] = useState({
+    type: '',
+    status: '',
+    accountId: '',
+    categoryId: ''
+  });
+
   const { transactions, createTransaction, updateTransaction, deleteTransaction, isLoading } = useTransactions();
   const { activeAccounts } = useAccounts();
   const { activeCategories } = useCategories();
   const { goals } = useGoals();
+
+  const filteredAndSortedTransactions = useMemo(() => {
+    let result = [...transactions];
+
+    // Global Search
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(t => 
+        t.description?.toLowerCase().includes(lowerSearch) ||
+        t.category?.name?.toLowerCase().includes(lowerSearch) ||
+        t.from_account?.name?.toLowerCase().includes(lowerSearch) ||
+        t.to_account?.name?.toLowerCase().includes(lowerSearch) ||
+        t.amount?.toString().includes(lowerSearch) ||
+        t.type?.toLowerCase().includes(lowerSearch) ||
+        t.status?.toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    // Column Filters
+    if (filters.type) result = result.filter(t => t.type === filters.type);
+    if (filters.status) result = result.filter(t => t.status === filters.status);
+    if (filters.accountId) {
+      result = result.filter(t => t.from_account_id === filters.accountId || t.to_account_id === filters.accountId);
+    }
+    if (filters.categoryId) result = result.filter(t => t.category_id === filters.categoryId);
+
+    // Sorting
+    if (sortConfig) {
+      result.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        switch (sortConfig.key) {
+          case 'category':
+            aValue = a.category?.name || '';
+            bValue = b.category?.name || '';
+            break;
+          case 'account':
+            aValue = (a.from_account?.name || '') + (a.to_account?.name || '');
+            bValue = (b.from_account?.name || '') + (b.to_account?.name || '');
+            break;
+          case 'amount':
+            aValue = a.amount;
+            bValue = b.amount;
+            break;
+          case 'transaction_date':
+            aValue = new Date(a.transaction_date).getTime();
+            bValue = new Date(b.transaction_date).getTime();
+            break;
+          default:
+            aValue = a[sortConfig.key] || '';
+            bValue = b[sortConfig.key] || '';
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [transactions, searchTerm, filters, sortConfig]);
+
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortConfig.key !== column) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />;
+    return sortConfig.direction === 'asc' ? 
+      <ArrowUp className="w-3 h-3 ml-1 text-emerald-500" /> : 
+      <ArrowDown className="w-3 h-3 ml-1 text-emerald-500" />;
+  };
 
   const { register, handleSubmit, watch, reset, setValue } = useForm();
   const type = watch('type', 'expense');
@@ -210,34 +299,159 @@ export default function Transactions() {
       )}
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-col space-y-4 pb-4">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
-              <Input placeholder="Search transactions..." className="pl-9" />
+              <Input 
+                placeholder="Search transactions..." 
+                className="pl-9" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-2.5 text-zinc-500 hover:text-zinc-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button 
+              variant={showFilters ? "secondary" : "outline"} 
+              size="sm" 
+              className="gap-2"
+              onClick={() => setShowFilters(!showFilters)}
+            >
               <Filter className="w-4 h-4" />
               Filters
+              {(filters.type || filters.status || filters.accountId || filters.categoryId) && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              )}
             </Button>
           </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-zinc-500">Type</label>
+                <Select 
+                  value={filters.type} 
+                  onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+                >
+                  <option value="">All Types</option>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                  <option value="transfer">Transfer</option>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-zinc-500">Status</label>
+                <Select 
+                  value={filters.status} 
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                >
+                  <option value="">All Status</option>
+                  <option value="posted">Posted</option>
+                  <option value="pending">Pending</option>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-zinc-500">Account</label>
+                <Select 
+                  value={filters.accountId} 
+                  onChange={(e) => setFilters(prev => ({ ...prev, accountId: e.target.value }))}
+                >
+                  <option value="">All Accounts</option>
+                  {activeAccounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-zinc-500">Category</label>
+                <Select 
+                  value={filters.categoryId} 
+                  onChange={(e) => setFilters(prev => ({ ...prev, categoryId: e.target.value }))}
+                >
+                  <option value="">All Categories</option>
+                  {activeCategories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setFilters({ type: '', status: '', accountId: '', categoryId: '' })}
+                  className="text-xs"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-zinc-500 border-b border-zinc-800">
-                  <th className="pb-2 font-medium">Date</th>
-                  <th className="pb-2 font-medium">Description</th>
-                  <th className="pb-2 font-medium hidden md:table-cell">Type</th>
-                  <th className="pb-2 font-medium hidden lg:table-cell">Account</th>
-                  <th className="pb-2 font-medium hidden sm:table-cell">Category</th>
-                  <th className="pb-2 font-medium text-right">Amount</th>
+                  <th 
+                    className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort('transaction_date')}
+                  >
+                    <div className="flex items-center">
+                      Date <SortIcon column="transaction_date" />
+                    </div>
+                  </th>
+                  <th 
+                    className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort('description')}
+                  >
+                    <div className="flex items-center">
+                      Description <SortIcon column="description" />
+                    </div>
+                  </th>
+                  <th 
+                    className="pb-2 font-medium hidden md:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort('type')}
+                  >
+                    <div className="flex items-center">
+                      Type <SortIcon column="type" />
+                    </div>
+                  </th>
+                  <th 
+                    className="pb-2 font-medium hidden lg:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort('account')}
+                  >
+                    <div className="flex items-center">
+                      Account <SortIcon column="account" />
+                    </div>
+                  </th>
+                  <th 
+                    className="pb-2 font-medium hidden sm:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort('category')}
+                  >
+                    <div className="flex items-center">
+                      Category <SortIcon column="category" />
+                    </div>
+                  </th>
+                  <th 
+                    className="pb-2 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort('amount')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Amount <SortIcon column="amount" />
+                    </div>
+                  </th>
                   <th className="pb-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {transactions.map((t: any) => (
+                {filteredAndSortedTransactions.map((t: any) => (
                   <tr key={t.id} className="group hover:bg-zinc-800/50">
                     <td className="py-2 text-zinc-400 whitespace-nowrap">{formatDate(t.transaction_date)}</td>
                     <td className="py-2">
