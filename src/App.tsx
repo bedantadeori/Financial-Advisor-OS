@@ -62,16 +62,17 @@ export default function App() {
           <div className="flex-1 flex flex-col min-w-0">
             {/* Mobile Header */}
             <header className="h-16 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between px-4 md:hidden sticky top-0 z-30">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-2 text-zinc-400 hover:text-zinc-100 -ml-2"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
               <div className="flex items-center gap-2">
                 <Wallet className="w-6 h-6 text-emerald-500" />
                 <span className="font-bold text-emerald-500 tracking-tight">FINANCE OS</span>
               </div>
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-2 text-zinc-400 hover:text-zinc-100"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
+              <div className="w-10" /> {/* Spacer to keep title centered */}
             </header>
 
             <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen">

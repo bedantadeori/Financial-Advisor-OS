@@ -83,9 +83,14 @@ export default function Goals() {
                 <label className="text-xs text-zinc-500">Target Amount</label>
                 <Input type="number" step="0.01" {...register('target_amount', { required: true })} />
               </div>
-              <div className="space-y-1 min-w-0">
+              <div className="space-y-1">
                 <label className="text-xs text-zinc-500">Deadline (Optional)</label>
-                <Input type="date" className="w-full" {...register('deadline')} />
+                <Input 
+                  type="date" 
+                  className="w-full" 
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  {...register('deadline')} 
+                />
               </div>
               <div className="md:col-span-3 flex justify-end gap-2 pt-4">
                 <Button type="button" variant="secondary" onClick={() => {
@@ -118,12 +123,15 @@ export default function Goals() {
                   <div className="p-2 rounded-md bg-zinc-800 text-blue-500">
                     <Target className="w-5 h-5" />
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       className="h-8 w-8"
-                      onClick={() => handleEdit(goal)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(goal);
+                      }}
                     >
                       <Edit2 className="w-3 h-3" />
                     </Button>
@@ -131,7 +139,10 @@ export default function Goals() {
                       variant="ghost" 
                       size="icon" 
                       className="h-8 w-8 text-red-500 hover:text-red-400"
-                      onClick={() => handleDelete(goal.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(goal.id);
+                      }}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>

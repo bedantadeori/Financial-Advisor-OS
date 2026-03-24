@@ -101,10 +101,15 @@ export default function Transactions() {
             <CardTitle>{editingTransaction ? 'Edit Transaction' : 'New Transaction'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-0">
-              <div className="space-y-1 min-w-0">
+            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
                 <label className="text-xs text-zinc-500">Date</label>
-                <Input type="date" className="w-full" {...register('transaction_date', { required: true })} />
+                <Input 
+                  type="date" 
+                  className="w-full" 
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  {...register('transaction_date', { required: true })} 
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-zinc-500">Type</label>

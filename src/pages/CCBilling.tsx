@@ -14,6 +14,10 @@ export default function CCBilling() {
   const { bills, details } = useCCBilling(selectedCC);
   const [expandedCycle, setExpandedCycle] = useState<string | null>(null);
 
+  const today = new Date().toISOString().split('T')[0];
+  const currentCycleIndex = bills.findIndex(b => b.statement_date && b.statement_date >= today);
+  const finalCurrentCycleIndex = currentCycleIndex === -1 ? 0 : currentCycleIndex;
+
   const toggleCycle = (statementDate: string) => {
     setExpandedCycle(expandedCycle === statementDate ? null : statementDate);
   };
@@ -55,7 +59,7 @@ export default function CCBilling() {
             return (
               <Card key={`${bill.credit_card_id}-${bill.statement_date}`} className={cn(
                 "transition-all",
-                index === 0 && "border-emerald-500/30 bg-emerald-500/[0.02]"
+                index === finalCurrentCycleIndex && "border-emerald-500/30 bg-emerald-500/[0.02]"
               )}>
                 <div 
                   className="p-4 cursor-pointer flex items-center justify-between"
@@ -64,14 +68,14 @@ export default function CCBilling() {
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "p-2 rounded bg-zinc-800",
-                      index === 0 ? "text-emerald-500" : "text-zinc-400"
+                      index === finalCurrentCycleIndex ? "text-emerald-500" : "text-zinc-400"
                     )}>
                       <ReceiptText className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold">{bill.credit_card_name}</h4>
-                        {index === 0 && (
+                        {index === finalCurrentCycleIndex && (
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase">
                             Current Cycle
                           </span>
