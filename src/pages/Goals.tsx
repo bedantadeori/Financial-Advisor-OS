@@ -74,16 +74,16 @@ export default function Goals() {
             <CardTitle>{editingGoal ? 'Edit Goal' : 'New Goal'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
+            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-0">
+              <div className="space-y-1 min-w-0">
                 <label className="text-xs text-zinc-500">Name</label>
                 <Input {...register('name', { required: true })} placeholder="e.g. New Car" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <label className="text-xs text-zinc-500">Target Amount</label>
                 <Input type="number" step="0.01" {...register('target_amount', { required: true })} />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <label className="text-xs text-zinc-500">Deadline (Optional)</label>
                 <Input type="date" className="w-full" {...register('deadline')} />
               </div>

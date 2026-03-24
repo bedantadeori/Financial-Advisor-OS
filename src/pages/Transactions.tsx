@@ -24,19 +24,32 @@ export default function Transactions() {
 
   const onSubmit = async (data: any) => {
     try {
+      const sanitizedData = {
+        ...data,
+        amount: parseFloat(data.amount),
+        from_account_id: data.from_account_id || null,
+        to_account_id: data.to_account_id || null,
+        category_id: data.category_id || null,
+        goal_id: data.goal_id || null,
+        is_planning_income: data.is_planning_income || false,
+      };
+
+      // Ensure correct fields are null based on type
+      if (data.type === 'income') {
+        sanitizedData.from_account_id = null;
+      } else if (data.type === 'expense') {
+        sanitizedData.to_account_id = null;
+      } else if (data.type === 'transfer') {
+        sanitizedData.category_id = null;
+      }
+
       if (editingTransaction) {
         await updateTransaction.mutateAsync({
           id: editingTransaction.id,
-          ...data,
-          amount: parseFloat(data.amount),
-          is_planning_income: data.is_planning_income || false,
+          ...sanitizedData,
         });
       } else {
-        await createTransaction.mutateAsync({
-          ...data,
-          amount: parseFloat(data.amount),
-          is_planning_income: data.is_planning_income || false,
-        });
+        await createTransaction.mutateAsync(sanitizedData);
       }
       setIsAddOpen(false);
       setEditingTransaction(null);
@@ -88,8 +101,8 @@ export default function Transactions() {
             <CardTitle>{editingTransaction ? 'Edit Transaction' : 'New Transaction'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
+            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-0">
+              <div className="space-y-1 min-w-0">
                 <label className="text-xs text-zinc-500">Date</label>
                 <Input type="date" className="w-full" {...register('transaction_date', { required: true })} />
               </div>

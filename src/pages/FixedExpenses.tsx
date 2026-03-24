@@ -31,18 +31,21 @@ export default function FixedExpenses() {
 
   const onSubmit = async (data: any) => {
     try {
+      const sanitizedData = {
+        ...data,
+        amount: parseFloat(data.amount),
+        category_id: data.category_id || null,
+        due_day: data.billing_type === 'bank' ? parseInt(data.due_day) : null,
+      };
+
       if (editingExpense) {
         await updateFixedExpense.mutateAsync({
           id: editingExpense.id,
-          ...data,
-          amount: parseFloat(data.amount),
-          due_day: data.billing_type === 'bank' ? parseInt(data.due_day) : null,
+          ...sanitizedData,
         });
       } else {
         await createFixedExpense.mutateAsync({
-          ...data,
-          amount: parseFloat(data.amount),
-          due_day: data.billing_type === 'bank' ? parseInt(data.due_day) : null,
+          ...sanitizedData,
           is_active: true,
         });
       }
@@ -88,7 +91,7 @@ export default function FixedExpenses() {
           setIsAddOpen(true);
         }} className="gap-2">
           <Plus className="w-4 h-4" />
-          Add Fixed Exp.
+          Add Fixed E
         </Button>
       </header>
 
