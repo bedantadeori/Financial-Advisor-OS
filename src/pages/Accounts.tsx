@@ -9,28 +9,32 @@ import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
 import { Drawer } from '../components/ui/Drawer';
 
-function AccountForm({ onSubmit, onCancel, register, editingAccount, isPending }: any) {
+function AccountForm({ onSubmit, onCancel, register, editingAccount, isPending, errors }: any) {
+  console.log('AccountForm rendering, isPending:', isPending, 'errors:', errors);
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div className="space-y-1">
         <label className="text-xs text-zinc-500">Name</label>
-        <Input {...register('name', { required: true })} placeholder="e.g. HDFC Bank" />
+        <Input {...register('name', { required: 'Name is required' })} placeholder="e.g. HDFC Bank" />
+        {errors.name && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.name.message}</p>}
       </div>
       <div className="space-y-1">
         <label className="text-xs text-zinc-500">Type</label>
-        <Select {...register('type', { required: true })}>
+        <Select {...register('type', { required: 'Type is required' })}>
           <option value="bank">Bank</option>
           <option value="credit_card">Credit Card</option>
           <option value="cash">Cash</option>
         </Select>
+        {errors.type && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.type.message}</p>}
       </div>
       <div className="space-y-1">
         <label className="text-xs text-zinc-500">Currency</label>
-        <Select {...register('currency', { required: true })}>
+        <Select {...register('currency', { required: 'Currency is required' })}>
           <option value="INR">INR (₹)</option>
           <option value="USD">USD ($)</option>
           <option value="VND">VND (₫)</option>
         </Select>
+        {errors.currency && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.currency.message}</p>}
       </div>
       <div className="space-y-1">
         <label className="text-xs text-zinc-500">{editingAccount ? 'Balance' : 'Initial Balance'}</label>
@@ -61,7 +65,7 @@ export default function Accounts() {
   }, []);
 
   const { accounts, createAccount, updateAccount, archiveAccount, isLoading } = useAccounts();
-  const { register, handleSubmit, reset } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
       name: '',
       type: 'bank',
@@ -71,21 +75,34 @@ export default function Accounts() {
   });
 
   const onSubmit = async (data: any) => {
+    console.log('Form data submitted:', data);
     try {
+      const balanceValue = parseFloat(String(data.balance || '0'));
+      if (isNaN(balanceValue)) {
+        throw new Error('Invalid balance value');
+      }
+
+      const sanitizedData = {
+        name: data.name,
+        type: data.type,
+        currency: data.currency,
+        balance: balanceValue,
+      };
+
+      console.log('Sanitized data for mutation:', sanitizedData);
+
       if (editingAccount) {
+        console.log('Calling updateAccount mutation for ID:', editingAccount.id);
         await updateAccount.mutateAsync({
           id: editingAccount.id,
-          ...data,
-          balance: parseFloat(data.balance || '0'),
-          currency: data.currency,
+          ...sanitizedData,
         });
       } else {
-        await createAccount.mutateAsync({
-          ...data,
-          balance: parseFloat(data.balance || '0'),
-          currency: data.currency,
-        });
+        console.log('Calling createAccount mutation');
+        await createAccount.mutateAsync(sanitizedData);
       }
+      
+      console.log('Mutation successful, resetting form');
       setIsAddOpen(false);
       setEditingAccount(null);
       reset({
@@ -94,8 +111,9 @@ export default function Accounts() {
         currency: 'INR',
         balance: ''
       });
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error('Detailed error in onSubmit:', error);
+      alert(error.message || 'Failed to save account. Please try again.');
     }
   };
 
@@ -160,6 +178,7 @@ export default function Accounts() {
               register={register}
               editingAccount={editingAccount}
               isPending={isPending}
+              errors={errors}
             />
           </CardContent>
         </Card>
@@ -186,6 +205,7 @@ export default function Accounts() {
               register={register}
               editingAccount={editingAccount}
               isPending={isPending}
+              errors={errors}
             />
           </div>
         </Drawer>

@@ -37,10 +37,12 @@ export function useAccounts() {
 
   const createAccount = useMutation({
     mutationFn: async (account: Omit<NewAccount, 'user_id'>) => {
+      console.log('Creating account:', account);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       
       const balanceInINR = await convertToINR(account.balance || 0, (account.currency as any) || 'INR');
+      console.log('Calculated balance_in_inr:', balanceInINR);
       
       const { data, error } = await supabase
         .from('accounts')
@@ -51,7 +53,11 @@ export function useAccounts() {
         }])
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating account:', error);
+        throw error;
+      }
+      console.log('Account created successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -61,13 +67,27 @@ export function useAccounts() {
 
   const updateAccount = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Account> & { id: string }) => {
+      console.log('Updating account:', id, updates);
+      
+      // Fetch latest account data to ensure accurate balance_in_inr calculation
+      const { data: currentAccount, error: fetchError } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error('Error fetching current account for update:', fetchError);
+        throw fetchError;
+      }
+
       let balanceInINR = updates.balance_in_inr;
       
       if (updates.balance !== undefined || updates.currency !== undefined) {
-        const currentAccount = accountsQuery.data?.find(a => a.id === id);
-        const balance = updates.balance ?? currentAccount?.balance ?? 0;
-        const currency = updates.currency ?? currentAccount?.currency ?? 'INR';
+        const balance = updates.balance ?? currentAccount.balance ?? 0;
+        const currency = updates.currency ?? currentAccount.currency ?? 'INR';
         balanceInINR = await convertToINR(balance, currency as any);
+        console.log('Recalculated balance_in_inr:', balanceInINR);
       }
 
       const { data, error } = await supabase
@@ -79,7 +99,12 @@ export function useAccounts() {
         .eq('id', id)
         .select()
         .single();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Supabase error updating account:', error);
+        throw error;
+      }
+      console.log('Account updated successfully:', data);
       return data;
     },
     onSuccess: () => {
