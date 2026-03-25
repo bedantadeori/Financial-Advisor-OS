@@ -64,8 +64,13 @@ export default function Dashboard() {
 
   // CC Billing Info
   const today = new Date().toISOString().split('T')[0];
+  
+  const currentCycle = [...bills]
+    .filter(b => b.statement_date && b.statement_date >= today)
+    .sort((a, b) => (a.statement_date || '').localeCompare(b.statement_date || ''))[0];
+
   const upcomingBill = [...bills]
-    .filter(b => b.due_date && b.due_date >= today)
+    .filter(b => b.due_date && b.due_date >= today && b.statement_date && b.statement_date < today)
     .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))[0];
 
   const toggleWidget = (id: string) => {
@@ -197,27 +202,57 @@ export default function Dashboard() {
             <CardTitle>CC Billing Engine</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {upcomingBill ? (
-              <>
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-xs text-zinc-500">Upcoming Bill Due</p>
-                    <p className="text-xl font-bold">{formatCurrency(upcomingBill.bill_amount)}</p>
+            {currentCycle || upcomingBill ? (
+              <div className="space-y-6">
+                {currentCycle && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Current Cycle</p>
+                        <p className="text-3xl font-black font-mono text-emerald-500">
+                          {formatCurrency(currentCycle.bill_amount)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Statement</p>
+                        <p className="text-sm font-bold">{formatDate(currentCycle.statement_date)}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">
+                        <span>{currentCycle.credit_card_name}</span>
+                        <span>Due {formatDate(currentCycle.due_date)}</span>
+                      </div>
+                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full w-[45%]" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-500">Due Date</p>
-                    <p className="text-sm font-medium">{formatDate(upcomingBill.due_date)}</p>
+                )}
+
+                {upcomingBill && (
+                  <div className={cn(
+                    "p-3 rounded-xl border border-zinc-800 bg-zinc-900/30",
+                    !currentCycle && "border-red-500/30 bg-red-500/[0.02]"
+                  )}>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-zinc-800 text-red-500">
+                          <AlertCircle className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Upcoming Bill</p>
+                          <p className="text-sm font-bold">{formatCurrency(upcomingBill.bill_amount)}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Due In</p>
+                        <p className="text-xs font-bold text-red-400">{formatDate(upcomingBill.due_date)}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">Cycle: {formatDate(upcomingBill.statement_date)}</span>
-                  </div>
-                  <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-red-500 h-full w-[65%]" />
-                  </div>
-                </div>
-              </>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-zinc-500">No active billing cycles</p>
             )}

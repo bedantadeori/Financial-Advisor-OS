@@ -23,7 +23,12 @@ export default function CCBilling() {
   }, []);
 
   const today = new Date().toISOString().split('T')[0];
-  const currentCycleIndex = bills.findIndex(b => b.statement_date && b.statement_date >= today);
+  
+  const closestFutureBill = [...bills]
+    .filter(b => b.statement_date && b.statement_date >= today)
+    .sort((a, b) => (a.statement_date || '').localeCompare(b.statement_date || ''))[0];
+
+  const currentCycleIndex = bills.findIndex(b => b === closestFutureBill);
   const finalCurrentCycleIndex = currentCycleIndex === -1 ? 0 : currentCycleIndex;
 
   const toggleCycle = (statementDate: string) => {
