@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database.types';
-import { getExchangeRates, convertToINR, convertFromINR } from '../lib/currency';
+import { convertCurrency } from '../lib/currency';
 
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type NewTransaction = Database['public']['Tables']['transactions']['Insert'];
@@ -17,8 +17,8 @@ export function useTransactions(filters?: any) {
         .select(`
           *,
           category:categories(name),
-          from_account:accounts!transactions_from_account_id_fkey(name, currency, balance, balance_in_inr),
-          to_account:accounts!transactions_to_account_id_fkey(name, currency, balance, balance_in_inr)
+          from_account:accounts!transactions_from_account_id_fkey(name, currency, balance),
+          to_account:accounts!transactions_to_account_id_fkey(name, currency, balance)
         `)
         .order('transaction_date', { ascending: false })
         .limit(500);
@@ -40,39 +40,46 @@ export function useTransactions(filters?: any) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       
-      const rates = await getExchangeRates();
-      const currency = (transaction.currency as any) || 'INR';
-      const exchangeRate = rates[currency] || 1;
-      const amountInINR = await convertToINR(transaction.amount, currency);
+      const transactionCurrency = (transaction.currency as any) || 'INR';
+      
+      let fromAccountAmount = transaction.amount;
+      let toAccountAmount = transaction.amount;
+
+      // 1. Single-hop conversion for From Account
+      if (transaction.from_account_id) {
+        const { data: fromAcc } = await supabase.from('accounts').select('currency').eq('id', transaction.from_account_id).single();
+        if (fromAcc && fromAcc.currency !== transactionCurrency) {
+          fromAccountAmount = await convertCurrency(transaction.amount, transactionCurrency, fromAcc.currency);
+        }
+      }
+
+      // 2. Single-hop conversion for To Account
+      if (transaction.to_account_id) {
+        const { data: toAcc } = await supabase.from('accounts').select('currency').eq('id', transaction.to_account_id).single();
+        if (toAcc && toAcc.currency !== transactionCurrency) {
+          toAccountAmount = await convertCurrency(transaction.amount, transactionCurrency, toAcc.currency);
+        }
+      }
+
+      // Calculate base INR for historical reporting if not already INR
+      const amountInINR = transactionCurrency === 'INR' 
+        ? transaction.amount 
+        : await convertCurrency(transaction.amount, transactionCurrency, 'INR');
 
       const { data, error } = await supabase
         .from('transactions')
         .insert([{ 
           ...transaction, 
           user_id: user.id,
-          amount_in_inr: amountInINR,
-          exchange_rate: exchangeRate,
-          currency: currency
+          amount_in_inr: amountInINR, 
+          from_account_amount: fromAccountAmount,
+          to_account_amount: toAccountAmount      
         }])
         .select()
         .single();
+        
       if (error) throw error;
       return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
-    },
-  });
-
-  const deleteTransaction = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -89,25 +96,59 @@ export function useTransactions(filters?: any) {
         .eq('id', id)
         .single();
 
-      const rates = await getExchangeRates();
-      const currency = (updates.currency as any) || oldTransaction?.currency || 'INR';
+      const transactionCurrency = (updates.currency as any) || oldTransaction?.currency || 'INR';
       const amount = updates.amount ?? oldTransaction?.amount ?? 0;
-      const amountInINR = await convertToINR(amount, currency);
-      const exchangeRate = rates[currency] || 1;
+
+      let fromAccountAmount = amount;
+      let toAccountAmount = amount;
+
+      const fromAccountId = updates.from_account_id !== undefined ? updates.from_account_id : oldTransaction?.from_account_id;
+      const toAccountId = updates.to_account_id !== undefined ? updates.to_account_id : oldTransaction?.to_account_id;
+
+      if (fromAccountId) {
+        const { data: fromAcc } = await supabase.from('accounts').select('currency').eq('id', fromAccountId).single();
+        if (fromAcc && fromAcc.currency !== transactionCurrency) {
+          fromAccountAmount = await convertCurrency(amount, transactionCurrency, fromAcc.currency);
+        }
+      }
+
+      if (toAccountId) {
+        const { data: toAcc } = await supabase.from('accounts').select('currency').eq('id', toAccountId).single();
+        if (toAcc && toAcc.currency !== transactionCurrency) {
+          toAccountAmount = await convertCurrency(amount, transactionCurrency, toAcc.currency);
+        }
+      }
+
+      const amountInINR = transactionCurrency === 'INR' 
+        ? amount 
+        : await convertCurrency(amount, transactionCurrency, 'INR');
 
       const { data, error } = await supabase
         .from('transactions')
         .update({
           ...updates,
           amount_in_inr: amountInINR,
-          exchange_rate: exchangeRate,
-          currency: currency
+          from_account_amount: fromAccountAmount,
+          to_account_amount: toAccountAmount
         })
         .eq('id', id)
         .select()
         .single();
+        
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+    },
+  });
+
+  const deleteTransaction = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });

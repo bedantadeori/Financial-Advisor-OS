@@ -222,7 +222,7 @@ export default function Accounts() {
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Balance</p>
                 <p className="text-3xl font-black font-mono text-emerald-500">
-                  {formatCurrency(selectedAccount.balance, selectedAccount.currency, true, selectedAccount.balance_in_inr)}
+                  {formatCurrency(selectedAccount.balance, selectedAccount.currency, false)}
                 </p>
               </div>
               <div className="px-3 py-1 rounded-full bg-zinc-800 text-[10px] uppercase font-black tracking-tighter text-zinc-300">
@@ -310,7 +310,7 @@ export default function Accounts() {
                       </span>
                     </td>
                     <td className="p-4 text-right font-mono font-bold">
-                      {formatCurrency(a.balance, a.currency, true, a.balance_in_inr)}
+                      {formatCurrency(a.balance, a.currency, false)}
                     </td>
                     <td className="p-4 hidden md:table-cell">
                       {a.archived_at ? (
@@ -367,7 +367,7 @@ export default function Accounts() {
                   </div>
                   <div className="text-right">
                     <p className="font-black font-mono text-emerald-500">
-                      {formatCurrency(a.balance, a.currency, true, a.balance_in_inr)}
+                      {formatCurrency(a.balance, a.currency, false)}
                     </p>
                     {a.archived_at && (
                       <span className="text-[8px] text-zinc-500 uppercase font-black tracking-tighter">Archived</span>

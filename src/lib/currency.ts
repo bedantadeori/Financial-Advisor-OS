@@ -40,26 +40,17 @@ export async function getExchangeRates(): Promise<ExchangeRates> {
   }
 }
 
-export async function convertToINR(amount: number, fromCurrency: Currency): Promise<number> {
-  console.log(`Converting ${amount} ${fromCurrency} to INR`);
-  if (fromCurrency === 'INR') return amount;
+export async function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): Promise<number> {
+  if (fromCurrency === toCurrency) return amount;
+  
   const rates = await getExchangeRates();
-  const rate = rates[fromCurrency];
-  if (!rate) {
-    console.warn(`No rate found for ${fromCurrency}, returning original amount`);
-    return amount;
-  }
-  const result = amount / rate;
-  console.log(`Conversion result: ${result} INR (rate: ${rate})`);
-  return result;
-}
-
-export async function convertFromINR(amount: number, toCurrency: Currency): Promise<number> {
-  if (toCurrency === 'INR') return amount;
-  const rates = await getExchangeRates();
-  const rate = rates[toCurrency];
-  if (!rate) return amount;
-  return amount * rate;
+  const fromRate = rates[fromCurrency] || 1;
+  const toRate = rates[toCurrency] || 1;
+  
+  // Single-hop calculation using the live rate ratio
+  const convertedAmount = (amount / fromRate) * toRate;
+  
+  return Number(convertedAmount.toFixed(2));
 }
 
 export function formatCurrencyWithSymbol(amount: number | null | undefined, currency: Currency = 'INR') {

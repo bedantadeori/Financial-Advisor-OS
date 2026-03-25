@@ -50,15 +50,15 @@ export default function Dashboard() {
   // Metrics (Always in INR)
   const bankBalance = activeAccounts
     .filter(a => a.type === 'bank')
-    .reduce((sum, a) => sum + (a.balance_in_inr || 0), 0);
+    .reduce((sum, a) => sum + (a.balance || 0), 0);
   
   const cashBalance = activeAccounts
     .filter(a => a.type === 'cash')
-    .reduce((sum, a) => sum + (a.balance_in_inr || 0), 0);
+    .reduce((sum, a) => sum + (a.balance || 0), 0);
   
   const ccDebt = activeAccounts
     .filter(a => a.type === 'credit_card')
-    .reduce((sum, a) => sum + (a.balance_in_inr || 0), 0);
+    .reduce((sum, a) => sum + (a.balance || 0), 0);
 
   const liquidNetWorth = bankBalance + cashBalance - ccDebt;
 
@@ -184,7 +184,6 @@ export default function Dashboard() {
             title={a.name} 
             value={a.balance} 
             currency={a.currency}
-            inrValue={a.balance_in_inr}
             icon={a.type === 'credit_card' ? CreditCard : Wallet}
             color={a.type === 'credit_card' ? 'text-red-500' : 'text-emerald-500'}
           />
@@ -302,7 +301,7 @@ export default function Dashboard() {
                         t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
                       )}>
                         {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
-                        {formatCurrency(t.amount, t.currency, true, t.amount_in_inr)}
+                        {formatCurrency(t.amount, t.currency, false)}
                       </td>
                     </tr>
                   ))}
@@ -328,7 +327,7 @@ export default function Dashboard() {
                       t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
                     )}>
                       {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
-                      {formatCurrency(t.amount, t.currency, true, t.amount_in_inr)}
+                      {formatCurrency(t.amount, t.currency, false)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-[10px] text-zinc-500 uppercase tracking-wider pt-2 border-t border-zinc-800/30">
@@ -351,7 +350,7 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ title, value, icon: Icon, color, currency = 'INR', inrValue }: any) {
+function MetricCard({ title, value, icon: Icon, color, currency = 'INR' }: any) {
   return (
     <Card>
       <CardContent className="p-4 flex items-center gap-4">
@@ -362,7 +361,7 @@ function MetricCard({ title, value, icon: Icon, color, currency = 'INR', inrValu
           <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider truncate">{title}</p>
           <div className="flex flex-col">
             <p className="text-xl font-black tracking-tight font-mono">
-              {formatCurrency(value, currency, true, inrValue)}
+              {formatCurrency(value, currency, false)}
             </p>
           </div>
         </div>

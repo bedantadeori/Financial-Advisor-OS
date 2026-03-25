@@ -572,11 +572,6 @@ export default function Transactions() {
                     )}>
                       {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
                       {formatCurrency(t.amount, t.currency)}
-                      {t.currency !== 'INR' && t.amount_in_inr && (
-                        <div className="text-[10px] text-zinc-500 font-normal">
-                          ≈ {formatCurrency(t.amount_in_inr)}
-                        </div>
-                      )}
                     </td>
                     <td className="p-4">
                       <span className={cn(
@@ -622,11 +617,6 @@ export default function Transactions() {
                     {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
                     {formatCurrency(t.amount, t.currency)}
                   </p>
-                  {t.currency !== 'INR' && t.amount_in_inr && (
-                    <p className="text-[10px] text-zinc-500">
-                      ≈ {formatCurrency(t.amount_in_inr)}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-zinc-800/50">
@@ -681,9 +671,6 @@ export default function Transactions() {
                 )}>
                   {formatCurrency(selectedTransaction.amount, selectedTransaction.currency)}
                 </p>
-                {selectedTransaction.currency !== 'INR' && selectedTransaction.amount_in_inr && (
-                  <p className="text-xs text-zinc-500">≈ {formatCurrency(selectedTransaction.amount_in_inr)}</p>
-                )}
               </div>
               <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-800">
                 <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Status</p>
