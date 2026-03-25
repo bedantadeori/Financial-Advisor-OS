@@ -1,16 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { Plus, Archive, Edit2 } from 'lucide-react';
+import { Plus, Archive, Edit2, Wallet, CreditCard, Banknote, Info, Calendar, MoreVertical } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
+import { Drawer } from '../components/ui/Drawer';
 
 export default function Accounts() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   const { accounts, createAccount, updateAccount, archiveAccount, isLoading } = useAccounts();
   const { register, handleSubmit, reset, setValue } = useForm();
 
@@ -39,6 +50,7 @@ export default function Accounts() {
   const handleEdit = (a: any) => {
     setEditingAccount(a);
     setIsAddOpen(true);
+    setIsDetailsOpen(false);
     setValue('name', a.name);
     setValue('type', a.type);
     setValue('balance', a.balance);
@@ -47,8 +59,47 @@ export default function Accounts() {
   const handleArchive = async (id: string) => {
     if (confirm('Are you sure you want to archive this account? It will be hidden from dropdowns.')) {
       await archiveAccount.mutateAsync(id);
+      setIsDetailsOpen(false);
     }
   };
+
+  const handleRowClick = (a: any) => {
+    if (isMobile) {
+      setSelectedAccount(a);
+      setIsDetailsOpen(true);
+    }
+  };
+
+  const AccountForm = () => (
+    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Name</label>
+        <Input {...register('name', { required: true })} placeholder="e.g. HDFC Bank" />
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Type</label>
+        <Select {...register('type', { required: true })}>
+          <option value="bank">Bank</option>
+          <option value="credit_card">Credit Card</option>
+          <option value="cash">Cash</option>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">{editingAccount ? 'Balance' : 'Initial Balance'}</label>
+        <Input type="number" step="0.01" {...register('balance')} placeholder="0.00" />
+      </div>
+      <div className="md:col-span-3 flex justify-end gap-2 pt-4">
+        <Button type="button" variant="secondary" onClick={() => {
+          setIsAddOpen(false);
+          setEditingAccount(null);
+          reset();
+        }}>Cancel</Button>
+        <Button type="submit" disabled={createAccount.isPending || updateAccount.isPending}>
+          {createAccount.isPending || updateAccount.isPending ? 'Saving...' : 'Save Account'}
+        </Button>
+      </div>
+    </form>
+  );
 
   return (
     <div className="space-y-6">
@@ -67,48 +118,106 @@ export default function Accounts() {
         </Button>
       </header>
 
-      {isAddOpen && (
+      {isAddOpen && !isMobile && (
         <Card className="border-emerald-500/50">
           <CardHeader>
             <CardTitle>{editingAccount ? 'Edit Account' : 'New Account'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Name</label>
-                <Input {...register('name', { required: true })} placeholder="e.g. HDFC Bank" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Type</label>
-                <Select {...register('type', { required: true })}>
-                  <option value="bank">Bank</option>
-                  <option value="credit_card">Credit Card</option>
-                  <option value="cash">Cash</option>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">{editingAccount ? 'Balance' : 'Initial Balance'}</label>
-                <Input type="number" step="0.01" {...register('balance')} placeholder="0.00" />
-              </div>
-              <div className="md:col-span-3 flex justify-end gap-2 pt-4">
-                <Button type="button" variant="secondary" onClick={() => {
-                  setIsAddOpen(false);
-                  setEditingAccount(null);
-                  reset();
-                }}>Cancel</Button>
-                <Button type="submit" disabled={createAccount.isPending || updateAccount.isPending}>
-                  {createAccount.isPending || updateAccount.isPending ? 'Saving...' : 'Save Account'}
-                </Button>
-              </div>
-            </form>
+            <AccountForm />
           </CardContent>
         </Card>
       )}
 
+      <Drawer
+        isOpen={isAddOpen && isMobile}
+        onClose={() => {
+          setIsAddOpen(false);
+          setEditingAccount(null);
+          reset();
+        }}
+        title={editingAccount ? 'Edit Account' : 'New Account'}
+      >
+        <div className="pt-4">
+          <AccountForm />
+        </div>
+      </Drawer>
+
+      <Drawer
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title="Account Details"
+      >
+        {selectedAccount && (
+          <div className="space-y-6 pt-4">
+            <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-2xl border border-zinc-800">
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Balance</p>
+                <p className="text-3xl font-black font-mono text-emerald-500">
+                  {formatCurrency(selectedAccount.balance)}
+                </p>
+              </div>
+              <div className="px-3 py-1 rounded-full bg-zinc-800 text-[10px] uppercase font-black tracking-tighter text-zinc-300">
+                {selectedAccount.type}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-start gap-4 p-4 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+                <div className="p-2 bg-zinc-800 rounded-lg">
+                  <Wallet className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Account Name</p>
+                  <p className="text-zinc-100 font-medium">{selectedAccount.name}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-4 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+                <div className="p-2 bg-zinc-800 rounded-lg">
+                  <Info className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Status</p>
+                  <p className={cn(
+                    "font-medium",
+                    selectedAccount.archived_at ? "text-zinc-500" : "text-emerald-500"
+                  )}>
+                    {selectedAccount.archived_at ? "Archived" : "Active"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {!selectedAccount.archived_at && (
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  className="w-full gap-2 border-zinc-800 h-12 rounded-xl"
+                  onClick={() => handleEdit(selectedAccount)}
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full gap-2 border-zinc-800 text-zinc-500 hover:text-red-400 h-12 rounded-xl"
+                  onClick={() => handleArchive(selectedAccount.id)}
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Drawer>
+
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            {/* Desktop Table View */}
+            <table className="w-full text-sm hidden md:table">
               <thead>
                 <tr className="text-left text-zinc-500 border-b border-zinc-800">
                   <th className="p-4 font-medium">Name</th>
@@ -168,6 +277,37 @@ export default function Accounts() {
                 ))}
               </tbody>
             </table>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-zinc-800">
+              {accounts.map((a) => (
+                <div 
+                  key={a.id} 
+                  onClick={() => handleRowClick(a)}
+                  className="p-4 active:bg-zinc-800 transition-colors flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center text-emerald-500">
+                      {a.type === 'credit_card' ? <CreditCard className="w-5 h-5" /> : 
+                       a.type === 'cash' ? <Banknote className="w-5 h-5" /> : 
+                       <Wallet className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <p className="font-bold text-zinc-100">{a.name}</p>
+                      <span className="text-[10px] uppercase text-zinc-500 font-bold tracking-wider">{a.type}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-black font-mono text-emerald-500">
+                      {formatCurrency(a.balance)}
+                    </p>
+                    {a.archived_at && (
+                      <span className="text-[8px] text-zinc-500 uppercase font-black tracking-tighter">Archived</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>

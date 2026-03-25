@@ -1,18 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCategories } from '../hooks/useCategories';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { formatDate } from '../lib/utils';
-import { Plus, Archive, Edit2 } from 'lucide-react';
+import { Plus, Archive, Edit2, MoreVertical, Tag, Calendar } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
+import { Drawer } from '../components/ui/Drawer';
+
+function CategoryForm({ onSubmit, onCancel, register, editingCategory, isPending }: any) {
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col md:flex-row gap-4">
+      <div className="flex-1 space-y-1">
+        <label className="text-xs text-zinc-500 md:hidden">Category Name</label>
+        <Input {...register('name', { required: true })} placeholder="e.g. Groceries" />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving...' : 'Save'}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export default function Categories() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
   const { categories, createCategory, updateCategory, archiveCategory } = useCategories();
   const { register, handleSubmit, reset, setValue } = useForm();
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const onSubmit = async (data: any) => {
     try {
@@ -36,13 +65,24 @@ export default function Categories() {
     setEditingCategory(c);
     setIsAddOpen(true);
     setValue('name', c.name);
+    setIsDetailsOpen(false);
   };
 
   const handleArchive = async (id: string) => {
     if (confirm('Are you sure you want to archive this category?')) {
       await archiveCategory.mutateAsync(id);
+      setIsDetailsOpen(false);
     }
   };
+
+  const handleRowClick = (c: any) => {
+    if (isMobile) {
+      setSelectedCategory(c);
+      setIsDetailsOpen(true);
+    }
+  };
+
+  const isPending = createCategory.isPending || updateCategory.isPending;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -61,32 +101,54 @@ export default function Categories() {
         </Button>
       </header>
 
-      {isAddOpen && (
+      {isAddOpen && !isMobile && (
         <Card className="border-emerald-500/50">
           <CardHeader>
             <CardTitle>{editingCategory ? 'Edit Category' : 'New Category'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="flex gap-4">
-              <div className="flex-1 space-y-1">
-                <Input {...register('name', { required: true })} placeholder="e.g. Groceries" />
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={() => {
-                  setIsAddOpen(false);
-                  setEditingCategory(null);
-                  reset();
-                }}>Cancel</Button>
-                <Button type="submit" disabled={createCategory.isPending || updateCategory.isPending}>
-                  {createCategory.isPending || updateCategory.isPending ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-            </form>
+            <CategoryForm 
+              onSubmit={handleSubmit(onSubmit)}
+              onCancel={() => {
+                setIsAddOpen(false);
+                setEditingCategory(null);
+                reset();
+              }}
+              register={register}
+              editingCategory={editingCategory}
+              isPending={isPending}
+            />
           </CardContent>
         </Card>
       )}
 
-      <Card>
+      {isAddOpen && isMobile && (
+        <Drawer 
+          isOpen={isAddOpen} 
+          onClose={() => {
+            setIsAddOpen(false);
+            setEditingCategory(null);
+            reset();
+          }}
+          title={editingCategory ? 'Edit Category' : 'New Category'}
+        >
+          <div className="p-4">
+            <CategoryForm 
+              onSubmit={handleSubmit(onSubmit)}
+              onCancel={() => {
+                setIsAddOpen(false);
+                setEditingCategory(null);
+                reset();
+              }}
+              register={register}
+              editingCategory={editingCategory}
+              isPending={isPending}
+            />
+          </div>
+        </Drawer>
+      )}
+
+      <Card className="hidden md:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -131,6 +193,86 @@ export default function Categories() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {categories.map((c) => (
+          <Card 
+            key={c.id} 
+            className="active:bg-zinc-800/50 transition-colors cursor-pointer"
+            onClick={() => handleRowClick(c)}
+          >
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-zinc-800 text-emerald-500">
+                    <Tag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-100">{c.name}</h3>
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">
+                      Created {formatDate(c.created_at)}
+                    </p>
+                  </div>
+                </div>
+                <MoreVertical className="w-4 h-4 text-zinc-500" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Mobile Details Drawer */}
+      <Drawer
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title="Category Details"
+      >
+        {selectedCategory && (
+          <div className="p-4 space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-zinc-800 text-emerald-500">
+                <Tag className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-zinc-100">{selectedCategory.name}</h3>
+                <p className="text-sm text-zinc-500">Transaction Category</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-zinc-300">
+                <div className="p-2 rounded-lg bg-zinc-800">
+                  <Calendar className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Created On</p>
+                  <p className="text-sm font-medium">{formatDate(selectedCategory.created_at)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-zinc-800">
+              <Button 
+                variant="secondary" 
+                className="w-full gap-2"
+                onClick={() => handleEdit(selectedCategory)}
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit
+              </Button>
+              <Button 
+                variant="secondary" 
+                className="w-full gap-2 text-zinc-500 hover:text-red-400"
+                onClick={() => handleArchive(selectedCategory.id)}
+              >
+                <Archive className="w-4 h-4" />
+                Archive
+              </Button>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

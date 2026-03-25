@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTransactions } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
@@ -7,15 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { Plus, Filter, Search, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Plus, Filter, Search, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, X, MoreVertical, Calendar, Tag, Wallet as WalletIcon, Info } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
+import { Drawer } from '../components/ui/Drawer';
 
 export default function Transactions() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: 'transaction_date',
     direction: 'desc'
@@ -26,6 +30,13 @@ export default function Transactions() {
     accountId: '',
     categoryId: ''
   });
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const { transactions, createTransaction, updateTransaction, deleteTransaction, isLoading } = useTransactions();
   const { activeAccounts } = useAccounts();
@@ -151,6 +162,7 @@ export default function Transactions() {
   const handleEdit = (t: any) => {
     setEditingTransaction(t);
     setIsAddOpen(true);
+    setIsDetailsOpen(false);
     // Populate form
     Object.keys(t).forEach(key => {
       if (key === 'transaction_date') {
@@ -164,8 +176,123 @@ export default function Transactions() {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this transaction?')) {
       await deleteTransaction.mutateAsync(id);
+      setIsDetailsOpen(false);
     }
   };
+
+  const handleRowClick = (t: any) => {
+    if (isMobile) {
+      setSelectedTransaction(t);
+      setIsDetailsOpen(true);
+    }
+  };
+
+  const TransactionForm = () => (
+    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Date</label>
+        <Input 
+          type="date" 
+          className="w-full" 
+          onClick={(e) => e.currentTarget.showPicker?.()}
+          {...register('transaction_date', { required: true })} 
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Type</label>
+        <Select {...register('type', { required: true })}>
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+          <option value="transfer">Transfer</option>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Amount</label>
+        <Input type="number" step="0.01" {...register('amount', { required: true })} />
+      </div>
+      
+      <div className="md:col-span-2 space-y-1">
+        <label className="text-xs text-zinc-500">Description</label>
+        <Input {...register('description', { required: true })} />
+      </div>
+      
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Status</label>
+        <Select {...register('status')}>
+          <option value="posted">Posted</option>
+          <option value="pending">Pending</option>
+        </Select>
+      </div>
+
+      {(type === 'expense' || type === 'transfer') && (
+        <div className="space-y-1">
+          <label className="text-xs text-zinc-500">From Account</label>
+          <Select {...register('from_account_id', { required: true })}>
+            <option value="">Select Account</option>
+            {activeAccounts.map(a => (
+              <option key={a.id} value={a.id}>{a.name} ({formatCurrency(a.balance)})</option>
+            ))}
+          </Select>
+        </div>
+      )}
+
+      {(type === 'income' || type === 'transfer') && (
+        <div className="space-y-1">
+          <label className="text-xs text-zinc-500">To Account</label>
+          <Select {...register('to_account_id', { required: true })}>
+            <option value="">Select Account</option>
+            {activeAccounts
+              .filter(a => type === 'income' ? a.type !== 'credit_card' : true)
+              .map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+          </Select>
+        </div>
+      )}
+
+      {type === 'transfer' && (
+        <div className="space-y-1">
+          <label className="text-xs text-zinc-500">Link to Goal (Optional)</label>
+          <Select {...register('goal_id')}>
+            <option value="">None</option>
+            {goals.map(g => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </Select>
+        </div>
+      )}
+
+      {type !== 'transfer' && (
+        <div className="space-y-1">
+          <label className="text-xs text-zinc-500">Category</label>
+          <Select {...register('category_id')}>
+            <option value="">None</option>
+            {activeCategories.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </Select>
+        </div>
+      )}
+
+      {type === 'income' && (
+        <div className="flex items-center gap-2 pt-6">
+          <input type="checkbox" {...register('is_planning_income')} id="planning" />
+          <label htmlFor="planning" className="text-xs text-zinc-400">Planning Income</label>
+        </div>
+      )}
+
+      <div className="md:col-span-3 flex justify-end gap-2 pt-4">
+        <Button type="button" variant="secondary" onClick={() => {
+          setIsAddOpen(false);
+          setEditingTransaction(null);
+          reset();
+        }}>Cancel</Button>
+        <Button type="submit" disabled={createTransaction.isPending || updateTransaction.isPending}>
+          {createTransaction.isPending || updateTransaction.isPending ? 'Saving...' : 'Save Transaction'}
+        </Button>
+      </div>
+    </form>
+  );
 
   return (
     <div className="space-y-6">
@@ -184,119 +311,138 @@ export default function Transactions() {
         </Button>
       </header>
 
-      {isAddOpen && (
+      {isAddOpen && !isMobile && (
         <Card className="border-emerald-500/50">
           <CardHeader>
             <CardTitle>{editingTransaction ? 'Edit Transaction' : 'New Transaction'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Date</label>
-                <Input 
-                  type="date" 
-                  className="w-full" 
-                  onClick={(e) => e.currentTarget.showPicker?.()}
-                  {...register('transaction_date', { required: true })} 
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Type</label>
-                <Select {...register('type', { required: true })}>
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                  <option value="transfer">Transfer</option>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Amount</label>
-                <Input type="number" step="0.01" {...register('amount', { required: true })} />
-              </div>
-              
-              <div className="md:col-span-2 space-y-1">
-                <label className="text-xs text-zinc-500">Description</label>
-                <Input {...register('description', { required: true })} />
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Status</label>
-                <Select {...register('status')}>
-                  <option value="posted">Posted</option>
-                  <option value="pending">Pending</option>
-                </Select>
-              </div>
-
-              {(type === 'expense' || type === 'transfer') && (
-                <div className="space-y-1">
-                  <label className="text-xs text-zinc-500">From Account</label>
-                  <Select {...register('from_account_id', { required: true })}>
-                    <option value="">Select Account</option>
-                    {activeAccounts.map(a => (
-                      <option key={a.id} value={a.id}>{a.name} ({formatCurrency(a.balance)})</option>
-                    ))}
-                  </Select>
-                </div>
-              )}
-
-              {(type === 'income' || type === 'transfer') && (
-                <div className="space-y-1">
-                  <label className="text-xs text-zinc-500">To Account</label>
-                  <Select {...register('to_account_id', { required: true })}>
-                    <option value="">Select Account</option>
-                    {activeAccounts
-                      .filter(a => type === 'income' ? a.type !== 'credit_card' : true)
-                      .map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))}
-                  </Select>
-                </div>
-              )}
-
-              {type === 'transfer' && (
-                <div className="space-y-1">
-                  <label className="text-xs text-zinc-500">Link to Goal (Optional)</label>
-                  <Select {...register('goal_id')}>
-                    <option value="">None</option>
-                    {goals.map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </Select>
-                </div>
-              )}
-
-              {type !== 'transfer' && (
-                <div className="space-y-1">
-                  <label className="text-xs text-zinc-500">Category</label>
-                  <Select {...register('category_id')}>
-                    <option value="">None</option>
-                    {activeCategories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </Select>
-                </div>
-              )}
-
-              {type === 'income' && (
-                <div className="flex items-center gap-2 pt-6">
-                  <input type="checkbox" {...register('is_planning_income')} id="planning" />
-                  <label htmlFor="planning" className="text-xs text-zinc-400">Planning Income</label>
-                </div>
-              )}
-
-              <div className="md:col-span-3 flex justify-end gap-2 pt-4">
-                <Button type="button" variant="secondary" onClick={() => {
-                  setIsAddOpen(false);
-                  setEditingTransaction(null);
-                  reset();
-                }}>Cancel</Button>
-                <Button type="submit" disabled={createTransaction.isPending || updateTransaction.isPending}>
-                  {createTransaction.isPending || updateTransaction.isPending ? 'Saving...' : 'Save Transaction'}
-                </Button>
-              </div>
-            </form>
+            <TransactionForm />
           </CardContent>
         </Card>
       )}
+
+      <Drawer
+        isOpen={isAddOpen && isMobile}
+        onClose={() => {
+          setIsAddOpen(false);
+          setEditingTransaction(null);
+          reset();
+        }}
+        title={editingTransaction ? 'Edit Transaction' : 'New Transaction'}
+      >
+        <div className="pt-4">
+          <TransactionForm />
+        </div>
+      </Drawer>
+
+      <Drawer
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title="Transaction Details"
+      >
+        {selectedTransaction && (
+          <div className="space-y-6 pt-4">
+            <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-2xl border border-zinc-800">
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Amount</p>
+                <p className={cn(
+                  "text-3xl font-black font-mono",
+                  selectedTransaction.type === 'income' ? 'text-emerald-500' : 
+                  selectedTransaction.type === 'expense' ? 'text-red-500' : 'text-blue-500'
+                )}>
+                  {selectedTransaction.type === 'expense' ? '-' : selectedTransaction.type === 'income' ? '+' : ''}
+                  {formatCurrency(selectedTransaction.amount)}
+                </p>
+              </div>
+              <div className={cn(
+                "px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-tighter",
+                selectedTransaction.type === 'income' ? 'bg-emerald-500/20 text-emerald-500' :
+                selectedTransaction.type === 'expense' ? 'bg-red-500/20 text-red-500' :
+                'bg-blue-500/20 text-blue-500'
+              )}>
+                {selectedTransaction.type}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-start gap-4 p-4 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+                <div className="p-2 bg-zinc-800 rounded-lg">
+                  <Info className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Description</p>
+                  <p className="text-zinc-100 font-medium">{selectedTransaction.description}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-start gap-4 p-4 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+                  <div className="p-2 bg-zinc-800 rounded-lg">
+                    <Calendar className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase font-bold">Date</p>
+                    <p className="text-zinc-100 font-medium">{formatDate(selectedTransaction.transaction_date)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+                  <div className="p-2 bg-zinc-800 rounded-lg">
+                    <Tag className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase font-bold">Category</p>
+                    <p className="text-zinc-100 font-medium">{selectedTransaction.category?.name || 'Uncategorized'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-4 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+                <div className="p-2 bg-zinc-800 rounded-lg">
+                  <WalletIcon className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Accounts</p>
+                  <div className="flex flex-col gap-1 mt-1">
+                    {selectedTransaction.from_account && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-400">From:</span>
+                        <span className="text-zinc-100 font-medium">{selectedTransaction.from_account.name}</span>
+                      </div>
+                    )}
+                    {selectedTransaction.to_account && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-400">To:</span>
+                        <span className="text-zinc-100 font-medium">{selectedTransaction.to_account.name}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2 border-zinc-800 h-12 rounded-xl"
+                onClick={() => handleEdit(selectedTransaction)}
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full gap-2 border-zinc-800 text-red-500 hover:text-red-400 h-12 rounded-xl"
+                onClick={() => handleDelete(selectedTransaction.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
+      </Drawer>
 
       <Card>
         <CardHeader className="flex flex-col space-y-4 pb-4">
@@ -419,131 +565,179 @@ export default function Transactions() {
                 )}
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-zinc-500 border-b border-zinc-800">
-                    <th 
-                      className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
-                      onClick={() => handleSort('transaction_date')}
-                    >
-                      <div className="flex items-center">
-                        Date <SortIcon column="transaction_date" />
-                      </div>
-                    </th>
-                    <th 
-                      className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
-                      onClick={() => handleSort('description')}
-                    >
-                      <div className="flex items-center">
-                        Description <SortIcon column="description" />
-                      </div>
-                    </th>
-                    <th 
-                      className="pb-2 font-medium hidden md:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
-                      onClick={() => handleSort('type')}
-                    >
-                      <div className="flex items-center">
-                        Type <SortIcon column="type" />
-                      </div>
-                    </th>
-                    <th 
-                      className="pb-2 font-medium hidden lg:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
-                      onClick={() => handleSort('account')}
-                    >
-                      <div className="flex items-center">
-                        Account <SortIcon column="account" />
-                      </div>
-                    </th>
-                    <th 
-                      className="pb-2 font-medium hidden sm:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
-                      onClick={() => handleSort('category')}
-                    >
-                      <div className="flex items-center">
-                        Category <SortIcon column="category" />
-                      </div>
-                    </th>
-                    <th 
-                      className="pb-2 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors"
-                      onClick={() => handleSort('amount')}
-                    >
-                      <div className="flex items-center justify-end">
-                        Amount <SortIcon column="amount" />
-                      </div>
-                    </th>
-                    <th className="pb-2 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800">
-                  {filteredAndSortedTransactions.map((t: any) => (
-                    <tr key={t.id} className="group hover:bg-zinc-800/50">
-                      <td className="py-2 text-zinc-400 whitespace-nowrap">{formatDate(t.transaction_date)}</td>
-                      <td className="py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-medium truncate max-w-[120px] sm:max-w-none">{t.description}</span>
-                          <div className="flex items-center gap-2 md:hidden">
-                            <span className={cn(
-                              "text-[8px] uppercase font-bold",
-                              t.type === 'income' ? 'text-emerald-500' :
-                              t.type === 'expense' ? 'text-red-500' :
-                              'text-blue-500'
-                            )}>
-                              {t.type}
-                            </span>
-                            {t.status === 'pending' && (
-                              <span className="text-[8px] text-amber-500 uppercase font-bold">Pending</span>
-                            )}
-                          </div>
+              <>
+                {/* Desktop Table View */}
+                <table className="w-full text-sm hidden md:table">
+                  <thead>
+                    <tr className="text-left text-zinc-500 border-b border-zinc-800">
+                      <th 
+                        className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
+                        onClick={() => handleSort('transaction_date')}
+                      >
+                        <div className="flex items-center">
+                          Date <SortIcon column="transaction_date" />
                         </div>
-                      </td>
-                      <td className="py-2 hidden md:table-cell">
-                        <span className={cn(
-                          "px-1.5 py-0.5 rounded text-[10px] uppercase font-bold",
+                      </th>
+                      <th 
+                        className="pb-2 font-medium cursor-pointer hover:text-zinc-300 transition-colors"
+                        onClick={() => handleSort('description')}
+                      >
+                        <div className="flex items-center">
+                          Description <SortIcon column="description" />
+                        </div>
+                      </th>
+                      <th 
+                        className="pb-2 font-medium hidden md:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                        onClick={() => handleSort('type')}
+                      >
+                        <div className="flex items-center">
+                          Type <SortIcon column="type" />
+                        </div>
+                      </th>
+                      <th 
+                        className="pb-2 font-medium hidden lg:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                        onClick={() => handleSort('account')}
+                      >
+                        <div className="flex items-center">
+                          Account <SortIcon column="account" />
+                        </div>
+                      </th>
+                      <th 
+                        className="pb-2 font-medium hidden sm:table-cell cursor-pointer hover:text-zinc-300 transition-colors"
+                        onClick={() => handleSort('category')}
+                      >
+                        <div className="flex items-center">
+                          Category <SortIcon column="category" />
+                        </div>
+                      </th>
+                      <th 
+                        className="pb-2 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors"
+                        onClick={() => handleSort('amount')}
+                      >
+                        <div className="flex items-center justify-end">
+                          Amount <SortIcon column="amount" />
+                        </div>
+                      </th>
+                      <th className="pb-2 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {filteredAndSortedTransactions.map((t: any) => (
+                      <tr key={t.id} className="group hover:bg-zinc-800/50">
+                        <td className="py-2 text-zinc-400 whitespace-nowrap">{formatDate(t.transaction_date)}</td>
+                        <td className="py-2">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium truncate max-w-[120px] sm:max-w-none">{t.description}</span>
+                            <div className="flex items-center gap-2 md:hidden">
+                              <span className={cn(
+                                "text-[8px] uppercase font-bold",
+                                t.type === 'income' ? 'text-emerald-500' :
+                                t.type === 'expense' ? 'text-red-500' :
+                                'text-blue-500'
+                              )}>
+                                {t.type}
+                              </span>
+                              {t.status === 'pending' && (
+                                <span className="text-[8px] text-amber-500 uppercase font-bold">Pending</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2 hidden md:table-cell">
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded text-[10px] uppercase font-bold",
+                            t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' :
+                            t.type === 'expense' ? 'bg-red-500/10 text-red-500' :
+                            'bg-blue-500/10 text-blue-500'
+                          )}>
+                            {t.type}
+                          </span>
+                        </td>
+                        <td className="py-2 hidden lg:table-cell">
+                          <div className="flex flex-col text-xs text-zinc-400">
+                            {t.from_account?.name && <span>From: {t.from_account.name}</span>}
+                            {t.to_account?.name && <span>To: {t.to_account.name}</span>}
+                          </div>
+                        </td>
+                        <td className="py-2 text-zinc-400 hidden sm:table-cell">{t.category?.name || '-'}</td>
+                        <td className={cn(
+                          "py-2 text-right font-mono font-bold",
+                          t.type === 'income' ? 'text-emerald-500' : 
+                          t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
+                        )}>
+                          {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
+                          {formatCurrency(t.amount)}
+                        </td>
+                        <td className="py-2 text-right">
+                          <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7"
+                              onClick={() => handleEdit(t)}
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 text-red-500 hover:text-red-400"
+                              onClick={() => handleDelete(t.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {filteredAndSortedTransactions.map((t: any) => (
+                    <div 
+                      key={t.id} 
+                      onClick={() => handleRowClick(t)}
+                      className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl active:bg-zinc-800 transition-colors flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
                           t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' :
                           t.type === 'expense' ? 'bg-red-500/10 text-red-500' :
                           'bg-blue-500/10 text-blue-500'
                         )}>
-                          {t.type}
-                        </span>
-                      </td>
-                      <td className="py-2 hidden lg:table-cell">
-                        <div className="flex flex-col text-xs text-zinc-400">
-                          {t.from_account?.name && <span>From: {t.from_account.name}</span>}
-                          {t.to_account?.name && <span>To: {t.to_account.name}</span>}
+                          {t.type === 'income' ? <ArrowDown className="w-5 h-5" /> : 
+                           t.type === 'expense' ? <ArrowUp className="w-5 h-5" /> : 
+                           <ArrowUpDown className="w-5 h-5" />}
                         </div>
-                      </td>
-                      <td className="py-2 text-zinc-400 hidden sm:table-cell">{t.category?.name || '-'}</td>
-                      <td className={cn(
-                        "py-2 text-right font-mono font-bold",
-                        t.type === 'income' ? 'text-emerald-500' : 
-                        t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
-                      )}>
-                        {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
-                        {formatCurrency(t.amount)}
-                      </td>
-                      <td className="py-2 text-right">
-                        <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7"
-                            onClick={() => handleEdit(t)}
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 text-red-500 hover:text-red-400"
-                            onClick={() => handleDelete(t.id)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                        <div className="min-w-0">
+                          <p className="font-bold text-zinc-100 truncate">{t.description}</p>
+                          <div className="flex items-center gap-2 text-[10px] text-zinc-500 uppercase font-bold">
+                            <span>{formatDate(t.transaction_date)}</span>
+                            <span>•</span>
+                            <span className="truncate">{t.category?.name || 'Uncategorized'}</span>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <p className={cn(
+                          "font-black font-mono",
+                          t.type === 'income' ? 'text-emerald-500' : 
+                          t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
+                        )}>
+                          {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
+                          {formatCurrency(t.amount)}
+                        </p>
+                        {t.status === 'pending' && (
+                          <span className="text-[8px] text-amber-500 uppercase font-black tracking-tighter">Pending</span>
+                        )}
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
         </CardContent>

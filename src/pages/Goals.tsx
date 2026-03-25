@@ -1,18 +1,60 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGoals } from '../hooks/useGoals';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { Plus, Edit2, Target, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Target, Calendar, Trash2, Info, MoreVertical } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
+import { Drawer } from '../components/ui/Drawer';
+
+function GoalForm({ onSubmit, onCancel, register, editingGoal, isPending }: any) {
+  return (
+    <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-0">
+      <div className="space-y-1 min-w-0">
+        <label className="text-xs text-zinc-500">Name</label>
+        <Input {...register('name', { required: true })} placeholder="e.g. New Car" />
+      </div>
+      <div className="space-y-1 min-w-0">
+        <label className="text-xs text-zinc-500">Target Amount</label>
+        <Input type="number" step="0.01" {...register('target_amount', { required: true })} />
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Deadline (Optional)</label>
+        <Input 
+          type="date" 
+          className="w-full" 
+          onClick={(e) => e.currentTarget.showPicker?.()}
+          {...register('deadline')} 
+        />
+      </div>
+      <div className="md:col-span-3 flex justify-end gap-2 pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving...' : 'Save Goal'}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export default function Goals() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<any>(null);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
   const { goals, createGoal, updateGoal, deleteGoal } = useGoals();
   const { register, handleSubmit, reset, setValue } = useForm();
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const onSubmit = async (data: any) => {
     try {
@@ -43,13 +85,24 @@ export default function Goals() {
     setValue('name', goal.name);
     setValue('target_amount', goal.target_amount);
     setValue('deadline', goal.deadline ? goal.deadline.split('T')[0] : '');
+    setIsDetailsOpen(false);
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this goal?')) {
       await deleteGoal.mutateAsync(id);
+      setIsDetailsOpen(false);
     }
   };
+
+  const handleRowClick = (goal: any) => {
+    if (isMobile) {
+      setSelectedGoal(goal);
+      setIsDetailsOpen(true);
+    }
+  };
+
+  const isPending = createGoal.isPending || updateGoal.isPending;
 
   return (
     <div className="space-y-6">
@@ -68,43 +121,51 @@ export default function Goals() {
         </Button>
       </header>
 
-      {isAddOpen && (
+      {isAddOpen && !isMobile && (
         <Card className="border-emerald-500/50">
           <CardHeader>
             <CardTitle>{editingGoal ? 'Edit Goal' : 'New Goal'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-0">
-              <div className="space-y-1 min-w-0">
-                <label className="text-xs text-zinc-500">Name</label>
-                <Input {...register('name', { required: true })} placeholder="e.g. New Car" />
-              </div>
-              <div className="space-y-1 min-w-0">
-                <label className="text-xs text-zinc-500">Target Amount</label>
-                <Input type="number" step="0.01" {...register('target_amount', { required: true })} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Deadline (Optional)</label>
-                <Input 
-                  type="date" 
-                  className="w-full" 
-                  onClick={(e) => e.currentTarget.showPicker?.()}
-                  {...register('deadline')} 
-                />
-              </div>
-              <div className="md:col-span-3 flex justify-end gap-2 pt-4">
-                <Button type="button" variant="secondary" onClick={() => {
-                  setIsAddOpen(false);
-                  setEditingGoal(null);
-                  reset();
-                }}>Cancel</Button>
-                <Button type="submit" disabled={createGoal.isPending || updateGoal.isPending}>
-                  {createGoal.isPending || updateGoal.isPending ? 'Saving...' : 'Save Goal'}
-                </Button>
-              </div>
-            </form>
+            <GoalForm 
+              onSubmit={handleSubmit(onSubmit)}
+              onCancel={() => {
+                setIsAddOpen(false);
+                setEditingGoal(null);
+                reset();
+              }}
+              register={register}
+              editingGoal={editingGoal}
+              isPending={isPending}
+            />
           </CardContent>
         </Card>
+      )}
+
+      {isAddOpen && isMobile && (
+        <Drawer 
+          isOpen={isAddOpen} 
+          onClose={() => {
+            setIsAddOpen(false);
+            setEditingGoal(null);
+            reset();
+          }}
+          title={editingGoal ? 'Edit Goal' : 'New Goal'}
+        >
+          <div className="p-4">
+            <GoalForm 
+              onSubmit={handleSubmit(onSubmit)}
+              onCancel={() => {
+                setIsAddOpen(false);
+                setEditingGoal(null);
+                reset();
+              }}
+              register={register}
+              editingGoal={editingGoal}
+              isPending={isPending}
+            />
+          </div>
+        </Drawer>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -117,35 +178,48 @@ export default function Goals() {
           else if (progress >= 50) progressColor = "bg-amber-500";
 
           return (
-            <Card key={goal.id} className="relative overflow-hidden group">
+            <Card 
+              key={goal.id} 
+              className={cn(
+                "relative overflow-hidden group cursor-pointer md:cursor-default",
+                isMobile && "active:bg-zinc-800/50 transition-colors"
+              )}
+              onClick={() => handleRowClick(goal)}
+            >
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div className="p-2 rounded-md bg-zinc-800 text-blue-500">
                     <Target className="w-5 h-5" />
                   </div>
                   <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(goal);
-                      }}
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-red-500 hover:text-red-400"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(goal.id);
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    {!isMobile ? (
+                      <>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(goal);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-red-500 hover:text-red-400"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(goal.id);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <MoreVertical className="w-4 h-4 text-zinc-500" />
+                    )}
                   </div>
                 </div>
                 <CardTitle className="mt-4 text-zinc-100 normal-case text-lg">{goal.name}</CardTitle>
@@ -186,6 +260,83 @@ export default function Goals() {
           );
         })}
       </div>
+
+      {/* Mobile Details Drawer */}
+      <Drawer
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title="Goal Details"
+      >
+        {selectedGoal && (
+          <div className="p-4 space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-zinc-800 text-blue-500">
+                <Target className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-zinc-100">{selectedGoal.name}</h3>
+                <p className="text-sm text-zinc-500">Savings Goal</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-800">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Current</p>
+                <p className="text-lg font-bold text-emerald-500">{formatCurrency(selectedGoal.current_amount)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-800">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Target</p>
+                <p className="text-lg font-bold text-zinc-100">{formatCurrency(selectedGoal.target_amount)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-zinc-300">
+                <div className="p-2 rounded-lg bg-zinc-800">
+                  <Info className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Progress</p>
+                  <p className="text-sm font-medium">
+                    {Math.round(((selectedGoal.current_amount || 0) / selectedGoal.target_amount) * 100)}% Complete
+                  </p>
+                </div>
+              </div>
+
+              {selectedGoal.deadline && (
+                <div className="flex items-center gap-3 text-zinc-300">
+                  <div className="p-2 rounded-lg bg-zinc-800">
+                    <Calendar className="w-4 h-4 text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-zinc-500">Deadline</p>
+                    <p className="text-sm font-medium">{formatDate(selectedGoal.deadline)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-zinc-800">
+              <Button 
+                variant="secondary" 
+                className="w-full gap-2"
+                onClick={() => handleEdit(selectedGoal)}
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit
+              </Button>
+              <Button 
+                variant="secondary" 
+                className="w-full gap-2 text-red-500 hover:text-red-400"
+                onClick={() => handleDelete(selectedGoal.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

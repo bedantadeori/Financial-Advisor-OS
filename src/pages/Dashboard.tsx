@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import { useCCBilling } from '../hooks/useCCBilling';
@@ -9,7 +10,9 @@ import {
   TrendingDown, 
   Wallet, 
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  Tag
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -27,6 +30,14 @@ export default function Dashboard() {
   const { transactions } = useTransactions();
   const { bills } = useCCBilling();
   const { goals } = useGoals();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Metrics
   const bankBalance = activeAccounts
@@ -165,41 +176,78 @@ export default function Dashboard() {
           <button className="text-xs text-emerald-500 hover:underline">View All</button>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-zinc-500 border-b border-zinc-800">
-                  <th className="pb-2 font-medium">Date</th>
-                  <th className="pb-2 font-medium">Description</th>
-                  <th className="pb-2 font-medium">Account</th>
-                  <th className="pb-2 font-medium">Category</th>
-                  <th className="pb-2 font-medium text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {transactions.slice(0, 10).map((t: any) => (
-                  <tr key={t.id} className="group hover:bg-zinc-800/50">
-                    <td className="py-2 text-zinc-400">{formatDate(t.transaction_date)}</td>
-                    <td className="py-2 font-medium">{t.description}</td>
-                    <td className="py-2">
-                      <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] uppercase text-zinc-300">
-                        {t.from_account?.name || t.to_account?.name}
-                      </span>
-                    </td>
-                    <td className="py-2 text-zinc-400">{t.category?.name || '-'}</td>
-                    <td className={cn(
-                      "py-2 text-right font-mono",
+          {!isMobile ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-zinc-500 border-b border-zinc-800">
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Description</th>
+                    <th className="pb-2 font-medium">Account</th>
+                    <th className="pb-2 font-medium">Category</th>
+                    <th className="pb-2 font-medium text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {transactions.slice(0, 10).map((t: any) => (
+                    <tr key={t.id} className="group hover:bg-zinc-800/50">
+                      <td className="py-2 text-zinc-400">{formatDate(t.transaction_date)}</td>
+                      <td className="py-2 font-medium">{t.description}</td>
+                      <td className="py-2">
+                        <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] uppercase text-zinc-300">
+                          {t.from_account?.name || t.to_account?.name}
+                        </span>
+                      </td>
+                      <td className="py-2 text-zinc-400">{t.category?.name || '-'}</td>
+                      <td className={cn(
+                        "py-2 text-right font-mono",
+                        t.type === 'income' ? 'text-emerald-500' : 
+                        t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
+                      )}>
+                        {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
+                        {formatCurrency(t.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {transactions.slice(0, 5).map((t: any) => (
+                <div key={t.id} className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/50">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h5 className="font-medium text-zinc-200">{t.description}</h5>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[8px] uppercase text-zinc-400 font-bold">
+                          {t.from_account?.name || t.to_account?.name}
+                        </span>
+                      </div>
+                    </div>
+                    <span className={cn(
+                      "font-mono font-bold",
                       t.type === 'income' ? 'text-emerald-500' : 
                       t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
                     )}>
                       {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
                       {formatCurrency(t.amount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-zinc-500 uppercase tracking-wider pt-2 border-t border-zinc-800/30">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3" />
+                      {formatDate(t.transaction_date)}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Tag className="w-3 h-3" />
+                      {t.category?.name || 'No Category'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
