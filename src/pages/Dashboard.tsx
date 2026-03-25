@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import { useCCBilling } from '../hooks/useCCBilling';
 import { useGoals } from '../hooks/useGoals';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { formatCurrency, formatDate } from '../lib/utils';
+import { Drawer } from '../components/ui/Drawer';
+import { Button } from '../components/ui/Button';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -12,18 +14,15 @@ import {
   CreditCard,
   AlertCircle,
   Calendar,
-  Tag
+  Tag,
+  Settings,
+  Check,
+  Plus,
+  Target
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
+import { cn } from '../lib/utils';
+
+const DEFAULT_WIDGETS = ['net-worth', 'bank-balance', 'cash-balance', 'cc-debt'];
 
 export default function Dashboard() {
   const { activeAccounts } = useAccounts();
@@ -31,6 +30,15 @@ export default function Dashboard() {
   const { bills } = useCCBilling();
   const { goals } = useGoals();
   const [isMobile, setIsMobile] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [visibleWidgets, setVisibleWidgets] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dashboard_widgets');
+    return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dashboard_widgets', JSON.stringify(visibleWidgets));
+  }, [visibleWidgets]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -39,18 +47,18 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Metrics
+  // Metrics (Always in INR)
   const bankBalance = activeAccounts
     .filter(a => a.type === 'bank')
-    .reduce((sum, a) => sum + (a.balance || 0), 0);
+    .reduce((sum, a) => sum + (a.balance_in_inr || 0), 0);
   
   const cashBalance = activeAccounts
     .filter(a => a.type === 'cash')
-    .reduce((sum, a) => sum + (a.balance || 0), 0);
+    .reduce((sum, a) => sum + (a.balance_in_inr || 0), 0);
   
   const ccDebt = activeAccounts
     .filter(a => a.type === 'credit_card')
-    .reduce((sum, a) => sum + (a.balance || 0), 0);
+    .reduce((sum, a) => sum + (a.balance_in_inr || 0), 0);
 
   const liquidNetWorth = bankBalance + cashBalance - ccDebt;
 
@@ -60,39 +68,127 @@ export default function Dashboard() {
     .filter(b => b.due_date && b.due_date >= today)
     .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))[0];
 
+  const toggleWidget = (id: string) => {
+    setVisibleWidgets(prev => 
+      prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id]
+    );
+  };
+
+  const widgetOptions = [
+    { id: 'net-worth', label: 'Liquid Net Worth', group: 'Core Metrics' },
+    { id: 'bank-balance', label: 'Total Bank Balance', group: 'Core Metrics' },
+    { id: 'cash-balance', label: 'Total Cash in Hand', group: 'Core Metrics' },
+    { id: 'cc-debt', label: 'Total CC Debt', group: 'Core Metrics' },
+    ...activeAccounts.map(a => ({ id: `account-${a.id}`, label: `${a.name} Balance`, group: 'Accounts' })),
+    ...goals.map(g => ({ id: `goal-${g.id}`, label: `${g.name} Progress`, group: 'Goals' })),
+  ];
+
+  const groupedOptions = useMemo(() => {
+    const groups: Record<string, typeof widgetOptions> = {};
+    widgetOptions.forEach(opt => {
+      if (!groups[opt.group]) groups[opt.group] = [];
+      groups[opt.group].push(opt);
+    });
+    return groups;
+  }, [widgetOptions]);
+
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-bold tracking-tight">Command Center</h2>
-        <p className="text-zinc-500 text-sm">Real-time financial overview</p>
+      <header className="flex justify-between items-center">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold tracking-tight">Command Center</h2>
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-500 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-zinc-500 text-sm">Real-time financial overview (INR)</p>
+        </div>
       </header>
+
+      <Drawer
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        title="Customize Dashboard"
+      >
+        <div className="space-y-6 pt-4 pb-20">
+          {Object.entries(groupedOptions).map(([group, options]) => (
+            <div key={group} className="space-y-2">
+              <h3 className="text-[10px] uppercase font-black text-zinc-500 tracking-widest px-1">{group}</h3>
+              <div className="grid grid-cols-1 gap-1">
+                {(options as any[]).map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => toggleWidget(opt.id)}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-all text-left",
+                      visibleWidgets.includes(opt.id) 
+                        ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-500" 
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                    )}
+                  >
+                    <span className="text-sm font-medium">{opt.label}</span>
+                    {visibleWidgets.includes(opt.id) ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Plus className="w-4 h-4 opacity-30" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Drawer>
 
       {/* Top Row - Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard 
-          title="Liquid Net Worth" 
-          value={liquidNetWorth} 
-          icon={TrendingUp}
-          color="text-emerald-500"
-        />
-        <MetricCard 
-          title="Bank Balance" 
-          value={bankBalance} 
-          icon={Wallet}
-          color="text-blue-500"
-        />
-        <MetricCard 
-          title="Cash in Hand" 
-          value={cashBalance} 
-          icon={TrendingUp}
-          color="text-emerald-500"
-        />
-        <MetricCard 
-          title="Total CC Debt" 
-          value={ccDebt} 
-          icon={CreditCard}
-          color="text-red-500"
-        />
+        {visibleWidgets.includes('net-worth') && (
+          <MetricCard 
+            title="Liquid Net Worth" 
+            value={liquidNetWorth} 
+            icon={TrendingUp}
+            color="text-emerald-500"
+          />
+        )}
+        {visibleWidgets.includes('bank-balance') && (
+          <MetricCard 
+            title="Bank Balance" 
+            value={bankBalance} 
+            icon={Wallet}
+            color="text-blue-500"
+          />
+        )}
+        {visibleWidgets.includes('cash-balance') && (
+          <MetricCard 
+            title="Cash in Hand" 
+            value={cashBalance} 
+            icon={TrendingUp}
+            color="text-emerald-500"
+          />
+        )}
+        {visibleWidgets.includes('cc-debt') && (
+          <MetricCard 
+            title="Total CC Debt" 
+            value={ccDebt} 
+            icon={CreditCard}
+            color="text-red-500"
+          />
+        )}
+        {activeAccounts.map(a => visibleWidgets.includes(`account-${a.id}`) && (
+          <MetricCard 
+            key={a.id}
+            title={a.name} 
+            value={a.balance} 
+            currency={a.currency}
+            inrValue={a.balance_in_inr}
+            icon={a.type === 'credit_card' ? CreditCard : Wallet}
+            color={a.type === 'credit_card' ? 'text-red-500' : 'text-emerald-500'}
+          />
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -136,7 +232,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {goals.slice(0, 4).map(goal => {
+              {goals.filter(g => visibleWidgets.includes(`goal-${g.id}`) || visibleWidgets.length === 0).slice(0, 4).map(goal => {
                 const progress = ((goal.current_amount || 0) / goal.target_amount) * 100;
                 const isUrgent = goal.deadline && 
                   new Date(goal.deadline).getTime() - new Date().getTime() < 60 * 24 * 60 * 60 * 1000 &&
@@ -164,6 +260,7 @@ export default function Dashboard() {
                   </div>
                 );
               })}
+              {goals.length === 0 && <p className="text-sm text-zinc-500">No active goals</p>}
             </div>
           </CardContent>
         </Card>
@@ -205,7 +302,7 @@ export default function Dashboard() {
                         t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
                       )}>
                         {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
-                        {formatCurrency(t.amount)}
+                        {formatCurrency(t.amount, t.currency, true, t.amount_in_inr)}
                       </td>
                     </tr>
                   ))}
@@ -231,7 +328,7 @@ export default function Dashboard() {
                       t.type === 'expense' ? 'text-red-500' : 'text-blue-500'
                     )}>
                       {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}
-                      {formatCurrency(t.amount)}
+                      {formatCurrency(t.amount, t.currency, true, t.amount_in_inr)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-[10px] text-zinc-500 uppercase tracking-wider pt-2 border-t border-zinc-800/30">
@@ -254,22 +351,22 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ title, value, icon: Icon, color }: any) {
+function MetricCard({ title, value, icon: Icon, color, currency = 'INR', inrValue }: any) {
   return (
     <Card>
       <CardContent className="p-4 flex items-center gap-4">
         <div className={cn("p-2 rounded-md bg-zinc-800", color)}>
           <Icon className="w-5 h-5" />
         </div>
-        <div>
-          <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">{title}</p>
-          <p className="text-xl font-bold tracking-tight">{formatCurrency(value)}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider truncate">{title}</p>
+          <div className="flex flex-col">
+            <p className="text-xl font-black tracking-tight font-mono">
+              {formatCurrency(value, currency, true, inrValue)}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

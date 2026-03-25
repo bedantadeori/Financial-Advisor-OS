@@ -18,6 +18,8 @@ export type Database = {
           name: string
           type: Database["public"]["Enums"]["account_type"]
           user_id: string
+          currency: Database["public"]["Enums"]["currency_type"]
+          balance_in_inr: number | null
         }
         Insert: {
           archived_at?: string | null
@@ -27,6 +29,8 @@ export type Database = {
           name: string
           type: Database["public"]["Enums"]["account_type"]
           user_id: string
+          currency?: Database["public"]["Enums"]["currency_type"]
+          balance_in_inr?: number | null
         }
         Update: {
           archived_at?: string | null
@@ -36,6 +40,8 @@ export type Database = {
           name?: string
           type?: Database["public"]["Enums"]["account_type"]
           user_id?: string
+          currency?: Database["public"]["Enums"]["currency_type"]
+          balance_in_inr?: number | null
         }
         Relationships: []
       }
@@ -166,6 +172,9 @@ export type Database = {
           transaction_date: string
           type: Database["public"]["Enums"]["transaction_type"]
           user_id: string
+          currency: Database["public"]["Enums"]["currency_type"]
+          amount_in_inr: number
+          exchange_rate: number
         }
         Insert: {
           amount: number
@@ -182,6 +191,9 @@ export type Database = {
           transaction_date: string
           type: Database["public"]["Enums"]["transaction_type"]
           user_id: string
+          currency?: Database["public"]["Enums"]["currency_type"]
+          amount_in_inr?: number
+          exchange_rate?: number
         }
         Update: {
           amount?: number
@@ -198,6 +210,9 @@ export type Database = {
           transaction_date?: string
           type?: Database["public"]["Enums"]["transaction_type"]
           user_id?: string
+          currency?: Database["public"]["Enums"]["currency_type"]
+          amount_in_inr?: number
+          exchange_rate?: number
         }
         Relationships: [
           {
@@ -319,6 +334,7 @@ export type Database = {
       billing_type: "bank" | "cc"
       transaction_status: "posted" | "pending"
       transaction_type: "income" | "expense" | "transfer"
+      currency_type: "INR" | "USD" | "VND"
     }
   }
 }

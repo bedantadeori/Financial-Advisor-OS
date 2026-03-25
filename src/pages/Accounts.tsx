@@ -9,6 +9,43 @@ import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
 import { Drawer } from '../components/ui/Drawer';
 
+function AccountForm({ onSubmit, onCancel, register, editingAccount, isPending }: any) {
+  return (
+    <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Name</label>
+        <Input {...register('name', { required: true })} placeholder="e.g. HDFC Bank" />
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Type</label>
+        <Select {...register('type', { required: true })}>
+          <option value="bank">Bank</option>
+          <option value="credit_card">Credit Card</option>
+          <option value="cash">Cash</option>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">Currency</label>
+        <Select {...register('currency', { required: true })}>
+          <option value="INR">INR (₹)</option>
+          <option value="USD">USD ($)</option>
+          <option value="VND">VND (₫)</option>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-zinc-500">{editingAccount ? 'Balance' : 'Initial Balance'}</label>
+        <Input type="number" step="0.01" {...register('balance')} placeholder="0.00" />
+      </div>
+      <div className="md:col-span-4 flex justify-end gap-2 pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving...' : 'Save Account'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export default function Accounts() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
@@ -22,8 +59,16 @@ export default function Accounts() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
   const { accounts, createAccount, updateAccount, archiveAccount, isLoading } = useAccounts();
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: {
+      name: '',
+      type: 'bank',
+      currency: 'INR',
+      balance: ''
+    }
+  });
 
   const onSubmit = async (data: any) => {
     try {
@@ -32,16 +77,23 @@ export default function Accounts() {
           id: editingAccount.id,
           ...data,
           balance: parseFloat(data.balance || '0'),
+          currency: data.currency,
         });
       } else {
         await createAccount.mutateAsync({
           ...data,
           balance: parseFloat(data.balance || '0'),
+          currency: data.currency,
         });
       }
       setIsAddOpen(false);
       setEditingAccount(null);
-      reset();
+      reset({
+        name: '',
+        type: 'bank',
+        currency: 'INR',
+        balance: ''
+      });
     } catch (error) {
       console.error(error);
     }
@@ -49,11 +101,14 @@ export default function Accounts() {
 
   const handleEdit = (a: any) => {
     setEditingAccount(a);
+    reset({
+      name: a.name,
+      type: a.type,
+      balance: a.balance,
+      currency: a.currency || 'INR'
+    });
     setIsAddOpen(true);
     setIsDetailsOpen(false);
-    setValue('name', a.name);
-    setValue('type', a.type);
-    setValue('balance', a.balance);
   };
 
   const handleArchive = async (id: string) => {
@@ -70,43 +125,14 @@ export default function Accounts() {
     }
   };
 
-  const AccountForm = () => (
-    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="space-y-1">
-        <label className="text-xs text-zinc-500">Name</label>
-        <Input {...register('name', { required: true })} placeholder="e.g. HDFC Bank" />
-      </div>
-      <div className="space-y-1">
-        <label className="text-xs text-zinc-500">Type</label>
-        <Select {...register('type', { required: true })}>
-          <option value="bank">Bank</option>
-          <option value="credit_card">Credit Card</option>
-          <option value="cash">Cash</option>
-        </Select>
-      </div>
-      <div className="space-y-1">
-        <label className="text-xs text-zinc-500">{editingAccount ? 'Balance' : 'Initial Balance'}</label>
-        <Input type="number" step="0.01" {...register('balance')} placeholder="0.00" />
-      </div>
-      <div className="md:col-span-3 flex justify-end gap-2 pt-4">
-        <Button type="button" variant="secondary" onClick={() => {
-          setIsAddOpen(false);
-          setEditingAccount(null);
-          reset();
-        }}>Cancel</Button>
-        <Button type="submit" disabled={createAccount.isPending || updateAccount.isPending}>
-          {createAccount.isPending || updateAccount.isPending ? 'Saving...' : 'Save Account'}
-        </Button>
-      </div>
-    </form>
-  );
+  const isPending = createAccount.isPending || updateAccount.isPending;
 
   return (
     <div className="space-y-6">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Accounts</h2>
-          <p className="text-zinc-500 text-sm">Manage your financial entities</p>
+          <p className="text-zinc-500 text-sm">Manage your bank accounts, cards, and cash</p>
         </div>
         <Button onClick={() => {
           setEditingAccount(null);
@@ -124,24 +150,46 @@ export default function Accounts() {
             <CardTitle>{editingAccount ? 'Edit Account' : 'New Account'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <AccountForm />
+            <AccountForm 
+              onSubmit={handleSubmit(onSubmit)}
+              onCancel={() => {
+                setIsAddOpen(false);
+                setEditingAccount(null);
+                reset();
+              }}
+              register={register}
+              editingAccount={editingAccount}
+              isPending={isPending}
+            />
           </CardContent>
         </Card>
       )}
 
-      <Drawer
-        isOpen={isAddOpen && isMobile}
-        onClose={() => {
-          setIsAddOpen(false);
-          setEditingAccount(null);
-          reset();
-        }}
-        title={editingAccount ? 'Edit Account' : 'New Account'}
-      >
-        <div className="pt-4">
-          <AccountForm />
-        </div>
-      </Drawer>
+      {isAddOpen && isMobile && (
+        <Drawer 
+          isOpen={isAddOpen} 
+          onClose={() => {
+            setIsAddOpen(false);
+            setEditingAccount(null);
+            reset();
+          }}
+          title={editingAccount ? 'Edit Account' : 'New Account'}
+        >
+          <div className="pt-4">
+            <AccountForm 
+              onSubmit={handleSubmit(onSubmit)}
+              onCancel={() => {
+                setIsAddOpen(false);
+                setEditingAccount(null);
+                reset();
+              }}
+              register={register}
+              editingAccount={editingAccount}
+              isPending={isPending}
+            />
+          </div>
+        </Drawer>
+      )}
 
       <Drawer
         isOpen={isDetailsOpen}
@@ -154,7 +202,7 @@ export default function Accounts() {
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Balance</p>
                 <p className="text-3xl font-black font-mono text-emerald-500">
-                  {formatCurrency(selectedAccount.balance)}
+                  {formatCurrency(selectedAccount.balance, selectedAccount.currency, true, selectedAccount.balance_in_inr)}
                 </p>
               </div>
               <div className="px-3 py-1 rounded-full bg-zinc-800 text-[10px] uppercase font-black tracking-tighter text-zinc-300">
@@ -242,7 +290,7 @@ export default function Accounts() {
                       </span>
                     </td>
                     <td className="p-4 text-right font-mono font-bold">
-                      {formatCurrency(a.balance)}
+                      {formatCurrency(a.balance, a.currency, true, a.balance_in_inr)}
                     </td>
                     <td className="p-4 hidden md:table-cell">
                       {a.archived_at ? (
@@ -299,7 +347,7 @@ export default function Accounts() {
                   </div>
                   <div className="text-right">
                     <p className="font-black font-mono text-emerald-500">
-                      {formatCurrency(a.balance)}
+                      {formatCurrency(a.balance, a.currency, true, a.balance_in_inr)}
                     </p>
                     {a.archived_at && (
                       <span className="text-[8px] text-zinc-500 uppercase font-black tracking-tighter">Archived</span>

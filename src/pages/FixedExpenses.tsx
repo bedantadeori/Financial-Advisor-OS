@@ -136,13 +136,15 @@ export default function FixedExpenses() {
 
   const handleEdit = (fe: any) => {
     setEditingExpense(fe);
+    reset({
+      name: fe.name,
+      amount: fe.amount.toString(),
+      billing_type: fe.billing_type,
+      due_day: fe.due_day || 1,
+      account_id: fe.account_id,
+      category_id: fe.category_id || ''
+    });
     setIsAddOpen(true);
-    setValue('name', fe.name);
-    setValue('amount', fe.amount.toString());
-    setValue('billing_type', fe.billing_type);
-    setValue('due_day', fe.due_day || 1);
-    setValue('account_id', fe.account_id);
-    setValue('category_id', fe.category_id || '');
     setIsDetailsOpen(false);
   };
 

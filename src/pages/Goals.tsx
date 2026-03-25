@@ -11,7 +11,7 @@ import { Drawer } from '../components/ui/Drawer';
 
 function GoalForm({ onSubmit, onCancel, register, editingGoal, isPending }: any) {
   return (
-    <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-0">
+    <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 min-w-0">
       <div className="space-y-1 min-w-0">
         <label className="text-xs text-zinc-500">Name</label>
         <Input {...register('name', { required: true })} placeholder="e.g. New Car" />
@@ -19,6 +19,10 @@ function GoalForm({ onSubmit, onCancel, register, editingGoal, isPending }: any)
       <div className="space-y-1 min-w-0">
         <label className="text-xs text-zinc-500">Target Amount</label>
         <Input type="number" step="0.01" {...register('target_amount', { required: true })} />
+      </div>
+      <div className="space-y-1 min-w-0">
+        <label className="text-xs text-zinc-500">Current Amount</label>
+        <Input type="number" step="0.01" {...register('current_amount')} placeholder="0.00" />
       </div>
       <div className="space-y-1">
         <label className="text-xs text-zinc-500">Deadline (Optional)</label>
@@ -29,7 +33,7 @@ function GoalForm({ onSubmit, onCancel, register, editingGoal, isPending }: any)
           {...register('deadline')} 
         />
       </div>
-      <div className="md:col-span-3 flex justify-end gap-2 pt-4">
+      <div className="md:col-span-4 flex justify-end gap-2 pt-4">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Saving...' : 'Save Goal'}
@@ -47,7 +51,14 @@ export default function Goals() {
   const [isMobile, setIsMobile] = useState(false);
   
   const { goals, createGoal, updateGoal, deleteGoal } = useGoals();
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: {
+      name: '',
+      target_amount: '',
+      current_amount: '',
+      deadline: ''
+    }
+  });
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -63,12 +74,13 @@ export default function Goals() {
           id: editingGoal.id,
           ...data,
           target_amount: parseFloat(data.target_amount),
+          current_amount: parseFloat(data.current_amount || '0'),
         });
       } else {
         await createGoal.mutateAsync({
           ...data,
           target_amount: parseFloat(data.target_amount),
-          current_amount: 0,
+          current_amount: parseFloat(data.current_amount || '0'),
         });
       }
       setIsAddOpen(false);
@@ -81,10 +93,13 @@ export default function Goals() {
 
   const handleEdit = (goal: any) => {
     setEditingGoal(goal);
+    reset({
+      name: goal.name,
+      target_amount: goal.target_amount,
+      current_amount: goal.current_amount,
+      deadline: goal.deadline ? goal.deadline.split('T')[0] : ''
+    });
     setIsAddOpen(true);
-    setValue('name', goal.name);
-    setValue('target_amount', goal.target_amount);
-    setValue('deadline', goal.deadline ? goal.deadline.split('T')[0] : '');
     setIsDetailsOpen(false);
   };
 
