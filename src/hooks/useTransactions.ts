@@ -45,45 +45,6 @@ export function useTransactions(filters?: any) {
       const exchangeRate = rates[currency] || 1;
       const amountInINR = await convertToINR(transaction.amount, currency);
 
-      // Handle account balance adjustments
-      if (transaction.from_account_id) {
-        const { data: fromAccount } = await supabase
-          .from('accounts')
-          .select('*')
-          .eq('id', transaction.from_account_id)
-          .single();
-        
-        if (fromAccount) {
-          const amountInAccountCurrency = await convertFromINR(amountInINR, fromAccount.currency as any);
-          const newBalance = (fromAccount.balance || 0) - amountInAccountCurrency;
-          const newBalanceInINR = await convertToINR(newBalance, fromAccount.currency as any);
-          
-          await supabase
-            .from('accounts')
-            .update({ balance: newBalance, balance_in_inr: newBalanceInINR })
-            .eq('id', fromAccount.id);
-        }
-      }
-
-      if (transaction.to_account_id) {
-        const { data: toAccount } = await supabase
-          .from('accounts')
-          .select('*')
-          .eq('id', transaction.to_account_id)
-          .single();
-        
-        if (toAccount) {
-          const amountInAccountCurrency = await convertFromINR(amountInINR, toAccount.currency as any);
-          const newBalance = (toAccount.balance || 0) + amountInAccountCurrency;
-          const newBalanceInINR = await convertToINR(newBalance, toAccount.currency as any);
-          
-          await supabase
-            .from('accounts')
-            .update({ balance: newBalance, balance_in_inr: newBalanceInINR })
-            .eq('id', toAccount.id);
-        }
-      }
-
       const { data, error } = await supabase
         .from('transactions')
         .insert([{ 
@@ -107,49 +68,6 @@ export function useTransactions(filters?: any) {
 
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
-      const { data: transaction } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (transaction) {
-        // Reverse balance adjustments
-        if (transaction.from_account_id) {
-          const { data: fromAccount } = await supabase
-            .from('accounts')
-            .select('*')
-            .eq('id', transaction.from_account_id)
-            .single();
-          
-          if (fromAccount) {
-            const newBalance = (fromAccount.balance || 0) + (transaction.amount || 0);
-            const newBalanceInINR = await convertToINR(newBalance, fromAccount.currency as any);
-            await supabase
-              .from('accounts')
-              .update({ balance: newBalance, balance_in_inr: newBalanceInINR })
-              .eq('id', fromAccount.id);
-          }
-        }
-
-        if (transaction.to_account_id) {
-          const { data: toAccount } = await supabase
-            .from('accounts')
-            .select('*')
-            .eq('id', transaction.to_account_id)
-            .single();
-          
-          if (toAccount) {
-            const newBalance = (toAccount.balance || 0) - (transaction.amount || 0);
-            const newBalanceInINR = await convertToINR(newBalance, toAccount.currency as any);
-            await supabase
-              .from('accounts')
-              .update({ balance: newBalance, balance_in_inr: newBalanceInINR })
-              .eq('id', toAccount.id);
-          }
-        }
-      }
-
       const { error } = await supabase
         .from('transactions')
         .delete()
@@ -165,72 +83,17 @@ export function useTransactions(filters?: any) {
 
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Transaction> & { id: string }) => {
-      // For simplicity, we'll delete and re-create the logic if amount/accounts change
-      // But actually, let's just handle it as a delete then create for balance logic
-      
       const { data: oldTransaction } = await supabase
         .from('transactions')
         .select('*')
         .eq('id', id)
         .single();
 
-      if (oldTransaction) {
-        // Reverse old balance adjustments
-        if (oldTransaction.from_account_id) {
-          const { data: fromAccount } = await supabase
-            .from('accounts')
-            .select('*')
-            .eq('id', oldTransaction.from_account_id)
-            .single();
-          if (fromAccount) {
-            const newBalance = (fromAccount.balance || 0) + (oldTransaction.amount || 0);
-            const newBalanceInINR = await convertToINR(newBalance, fromAccount.currency as any);
-            await supabase.from('accounts').update({ balance: newBalance, balance_in_inr: newBalanceInINR }).eq('id', fromAccount.id);
-          }
-        }
-        if (oldTransaction.to_account_id) {
-          const { data: toAccount } = await supabase
-            .from('accounts')
-            .select('*')
-            .eq('id', oldTransaction.to_account_id)
-            .single();
-          if (toAccount) {
-            const newBalance = (toAccount.balance || 0) - (oldTransaction.amount || 0);
-            const newBalanceInINR = await convertToINR(newBalance, toAccount.currency as any);
-            await supabase.from('accounts').update({ balance: newBalance, balance_in_inr: newBalanceInINR }).eq('id', toAccount.id);
-          }
-        }
-      }
-
-      // Apply new balance adjustments
       const rates = await getExchangeRates();
       const currency = (updates.currency as any) || oldTransaction?.currency || 'INR';
       const amount = updates.amount ?? oldTransaction?.amount ?? 0;
       const amountInINR = await convertToINR(amount, currency);
       const exchangeRate = rates[currency] || 1;
-
-      const fromAccountId = updates.from_account_id !== undefined ? updates.from_account_id : oldTransaction?.from_account_id;
-      const toAccountId = updates.to_account_id !== undefined ? updates.to_account_id : oldTransaction?.to_account_id;
-
-      if (fromAccountId) {
-        const { data: fromAccount } = await supabase.from('accounts').select('*').eq('id', fromAccountId).single();
-        if (fromAccount) {
-          const amountInAccountCurrency = await convertFromINR(amountInINR, fromAccount.currency as any);
-          const newBalance = (fromAccount.balance || 0) - amountInAccountCurrency;
-          const newBalanceInINR = await convertToINR(newBalance, fromAccount.currency as any);
-          await supabase.from('accounts').update({ balance: newBalance, balance_in_inr: newBalanceInINR }).eq('id', fromAccount.id);
-        }
-      }
-
-      if (toAccountId) {
-        const { data: toAccount } = await supabase.from('accounts').select('*').eq('id', toAccountId).single();
-        if (toAccount) {
-          const amountInAccountCurrency = await convertFromINR(amountInINR, toAccount.currency as any);
-          const newBalance = (toAccount.balance || 0) + amountInAccountCurrency;
-          const newBalanceInINR = await convertToINR(newBalance, toAccount.currency as any);
-          await supabase.from('accounts').update({ balance: newBalance, balance_in_inr: newBalanceInINR }).eq('id', toAccount.id);
-        }
-      }
 
       const { data, error } = await supabase
         .from('transactions')

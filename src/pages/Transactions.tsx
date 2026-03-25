@@ -272,6 +272,11 @@ export default function Transactions() {
         currency: data.currency || 'INR',
       };
 
+      // Remove nested relational objects that Supabase doesn't want in an update
+      delete sanitizedData.category;
+      delete sanitizedData.from_account;
+      delete sanitizedData.to_account;
+
       // Ensure correct fields are null based on type
       if (data.type === 'income') {
         sanitizedData.from_account_id = null;
