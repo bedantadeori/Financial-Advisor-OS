@@ -347,6 +347,13 @@ export type Database = {
     }
     Functions: {
       inject_monthly_fixed_expenses: { Args: never; Returns: undefined }
+      mark_cc_bill_paid: {
+        Args: {
+          p_credit_card_id: string
+          p_statement_date: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type: "bank" | "credit_card" | "cash"

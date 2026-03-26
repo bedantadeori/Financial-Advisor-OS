@@ -8,8 +8,6 @@ import { formatCurrency, formatDate } from '../lib/utils';
 import { Drawer } from '../components/ui/Drawer';
 import { Button } from '../components/ui/Button';
 import { 
-  TrendingUp, 
-  TrendingDown, 
   Wallet, 
   CreditCard,
   AlertCircle,
@@ -22,8 +20,6 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-const DEFAULT_WIDGETS = ['net-worth', 'bank-balance', 'cash-balance', 'cc-debt'];
-
 export default function Dashboard() {
   const { activeAccounts } = useAccounts();
   const { transactions } = useTransactions();
@@ -33,8 +29,26 @@ export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState<string[]>(() => {
     const saved = localStorage.getItem('dashboard_widgets');
-    return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
+    return saved ? JSON.parse(saved) : [];
   });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('dashboard_widgets');
+    if (!saved && activeAccounts.length > 0 && visibleWidgets.length === 0) {
+      const defaults = activeAccounts
+        .filter(a => {
+          const name = a.name.toLowerCase();
+          return name.includes('forex') || 
+                 name.includes('hdfc') || 
+                 name.includes('usd') || 
+                 name.includes('cash');
+        })
+        .map(a => `account-${a.id}`);
+      if (defaults.length > 0) {
+        setVisibleWidgets(defaults);
+      }
+    }
+  }, [activeAccounts, visibleWidgets.length]);
 
   useEffect(() => {
     localStorage.setItem('dashboard_widgets', JSON.stringify(visibleWidgets));
@@ -46,21 +60,6 @@ export default function Dashboard() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Metrics (Always in INR)
-  const bankBalance = activeAccounts
-    .filter(a => a.type === 'bank')
-    .reduce((sum, a) => sum + (a.balance || 0), 0);
-  
-  const cashBalance = activeAccounts
-    .filter(a => a.type === 'cash')
-    .reduce((sum, a) => sum + (a.balance || 0), 0);
-  
-  const ccDebt = activeAccounts
-    .filter(a => a.type === 'credit_card')
-    .reduce((sum, a) => sum + (a.balance || 0), 0);
-
-  const liquidNetWorth = bankBalance + cashBalance - ccDebt;
 
   // CC Billing Info
   const today = new Date().toISOString().split('T')[0];
@@ -76,7 +75,7 @@ export default function Dashboard() {
         .sort((a, b) => (a.statement_date || '').localeCompare(b.statement_date || ''))[0];
       
       const upcoming = [...cardBills]
-        .filter(b => b.due_date && b.due_date >= today && b.statement_date && b.statement_date < today)
+        .filter(b => b.due_date && b.due_date >= today && b.statement_date && b.statement_date < today && b.status !== 'paid')
         .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))[0];
 
       return { account, current, upcoming };
@@ -90,10 +89,6 @@ export default function Dashboard() {
   };
 
   const widgetOptions = [
-    { id: 'net-worth', label: 'Liquid Net Worth', group: 'Core Metrics' },
-    { id: 'bank-balance', label: 'Total Bank Balance', group: 'Core Metrics' },
-    { id: 'cash-balance', label: 'Total Cash in Hand', group: 'Core Metrics' },
-    { id: 'cc-debt', label: 'Total CC Debt', group: 'Core Metrics' },
     ...activeAccounts.map(a => ({ id: `account-${a.id}`, label: `${a.name} Balance`, group: 'Accounts' })),
     ...goals.map(g => ({ id: `goal-${g.id}`, label: `${g.name} Progress`, group: 'Goals' })),
   ];
@@ -169,38 +164,6 @@ export default function Dashboard() {
 
       {/* Top Row - Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {visibleWidgets.includes('net-worth') && (
-          <MetricCard 
-            title="Liquid Net Worth" 
-            value={liquidNetWorth} 
-            icon={TrendingUp}
-            color="text-emerald-500"
-          />
-        )}
-        {visibleWidgets.includes('bank-balance') && (
-          <MetricCard 
-            title="Bank Balance" 
-            value={bankBalance} 
-            icon={Wallet}
-            color="text-blue-500"
-          />
-        )}
-        {visibleWidgets.includes('cash-balance') && (
-          <MetricCard 
-            title="Cash in Hand" 
-            value={cashBalance} 
-            icon={TrendingUp}
-            color="text-emerald-500"
-          />
-        )}
-        {visibleWidgets.includes('cc-debt') && (
-          <MetricCard 
-            title="Total CC Debt" 
-            value={ccDebt} 
-            icon={CreditCard}
-            color="text-red-500"
-          />
-        )}
         {activeAccounts.map(a => visibleWidgets.includes(`account-${a.id}`) && (
           <MetricCard 
             key={a.id}
