@@ -101,28 +101,7 @@ export default function Categories() {
         </Button>
       </header>
 
-      {isAddOpen && !isMobile && (
-        <Card className="border-emerald-500/50">
-          <CardHeader>
-            <CardTitle>{editingCategory ? 'Edit Category' : 'New Category'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CategoryForm 
-              onSubmit={handleSubmit(onSubmit)}
-              onCancel={() => {
-                setIsAddOpen(false);
-                setEditingCategory(null);
-                reset();
-              }}
-              register={register}
-              editingCategory={editingCategory}
-              isPending={isPending}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {isAddOpen && isMobile && (
+      {isAddOpen && (
         <Drawer 
           isOpen={isAddOpen} 
           onClose={() => {

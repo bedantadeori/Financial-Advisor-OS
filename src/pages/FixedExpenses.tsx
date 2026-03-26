@@ -194,31 +194,7 @@ export default function FixedExpenses() {
         </p>
       </div>
 
-      {isAddOpen && !isMobile && (
-        <Card className="border-emerald-500/50">
-          <CardHeader>
-            <CardTitle>{editingExpense ? 'Edit Fixed Expense' : 'New Fixed Expense'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FixedExpenseForm 
-              onSubmit={handleSubmit(onSubmit)}
-              onCancel={() => {
-                setIsAddOpen(false);
-                setEditingExpense(null);
-                reset();
-              }}
-              register={register}
-              editingExpense={editingExpense}
-              isPending={isPending}
-              billingType={billingType}
-              activeAccounts={activeAccounts}
-              activeCategories={activeCategories}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {isAddOpen && isMobile && (
+      {isAddOpen && (
         <Drawer 
           isOpen={isAddOpen} 
           onClose={() => {

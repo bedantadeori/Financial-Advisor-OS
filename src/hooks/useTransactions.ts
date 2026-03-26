@@ -85,6 +85,8 @@ export function useTransactions(filters?: any) {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['cc_monthly_bills'] });
+      queryClient.invalidateQueries({ queryKey: ['cc_transaction_details'] });
     },
   });
 
@@ -142,6 +144,8 @@ export function useTransactions(filters?: any) {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['cc_monthly_bills'] });
+      queryClient.invalidateQueries({ queryKey: ['cc_transaction_details'] });
     },
   });
 
@@ -154,6 +158,8 @@ export function useTransactions(filters?: any) {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['cc_monthly_bills'] });
+      queryClient.invalidateQueries({ queryKey: ['cc_transaction_details'] });
     },
   });
 

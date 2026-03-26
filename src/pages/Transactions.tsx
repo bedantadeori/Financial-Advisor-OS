@@ -374,13 +374,43 @@ export default function Transactions() {
         </Button>
       </header>
 
-      {isAddOpen && !isMobile && (
-        <Card className="border-emerald-500/50">
-          <CardHeader>
-            <CardTitle>{editingTransaction ? 'Edit Transaction' : 'New Transaction'}</CardTitle>
-          </CardHeader>
-          <CardContent>
+      {isAddOpen && (
+        <Drawer
+          isOpen={isAddOpen}
+          onClose={() => {
+            setIsAddOpen(false);
+            setEditingTransaction(null);
+            reset();
+          }}
+          title={editingTransaction ? 'Edit Transaction' : 'New Transaction'}
+          footer={
+            <div className="flex justify-end gap-2 w-full">
+              <Button 
+                type="button" 
+                variant="secondary" 
+                className="flex-1"
+                onClick={() => {
+                  setIsAddOpen(false);
+                  setEditingTransaction(null);
+                  reset();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                form="transaction-form" 
+                className="flex-1"
+                disabled={createTransaction.isPending || updateTransaction.isPending}
+              >
+                {(createTransaction.isPending || updateTransaction.isPending) ? 'Saving...' : 'Save Transaction'}
+              </Button>
+            </div>
+          }
+        >
+          <div className="pt-4">
             <TransactionForm 
+              id="transaction-form"
               onSubmit={handleSubmit(onSubmit)}
               onCancel={() => {
                 setIsAddOpen(false);
@@ -394,64 +424,11 @@ export default function Transactions() {
               goals={goals}
               isPending={createTransaction.isPending || updateTransaction.isPending}
               editingTransaction={editingTransaction}
+              showButtons={false}
             />
-          </CardContent>
-        </Card>
-      )}
-
-      <Drawer
-        isOpen={isAddOpen && isMobile}
-        onClose={() => {
-          setIsAddOpen(false);
-          setEditingTransaction(null);
-          reset();
-        }}
-        title={editingTransaction ? 'Edit Transaction' : 'New Transaction'}
-        footer={
-          <div className="flex justify-end gap-2 w-full">
-            <Button 
-              type="button" 
-              variant="secondary" 
-              className="flex-1"
-              onClick={() => {
-                setIsAddOpen(false);
-                setEditingTransaction(null);
-                reset();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              form="transaction-form" 
-              className="flex-1"
-              disabled={createTransaction.isPending || updateTransaction.isPending}
-            >
-              {(createTransaction.isPending || updateTransaction.isPending) ? 'Saving...' : 'Save Transaction'}
-            </Button>
           </div>
-        }
-      >
-        <div className="pt-4">
-          <TransactionForm 
-            id="transaction-form"
-            onSubmit={handleSubmit(onSubmit)}
-            onCancel={() => {
-              setIsAddOpen(false);
-              setEditingTransaction(null);
-              reset();
-            }}
-            register={register}
-            type={type}
-            activeAccounts={activeAccounts}
-            activeCategories={activeCategories}
-            goals={goals}
-            isPending={createTransaction.isPending || updateTransaction.isPending}
-            editingTransaction={editingTransaction}
-            showButtons={false}
-          />
-        </div>
-      </Drawer>
+        </Drawer>
+      )}
 
       <Card>
         <CardContent className="p-4 space-y-4">

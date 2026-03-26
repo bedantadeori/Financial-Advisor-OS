@@ -136,28 +136,7 @@ export default function Goals() {
         </Button>
       </header>
 
-      {isAddOpen && !isMobile && (
-        <Card className="border-emerald-500/50">
-          <CardHeader>
-            <CardTitle>{editingGoal ? 'Edit Goal' : 'New Goal'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GoalForm 
-              onSubmit={handleSubmit(onSubmit)}
-              onCancel={() => {
-                setIsAddOpen(false);
-                setEditingGoal(null);
-                reset();
-              }}
-              register={register}
-              editingGoal={editingGoal}
-              isPending={isPending}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {isAddOpen && isMobile && (
+      {isAddOpen && (
         <Drawer 
           isOpen={isAddOpen} 
           onClose={() => {

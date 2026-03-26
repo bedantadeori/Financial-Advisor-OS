@@ -162,29 +162,7 @@ export default function Accounts() {
         </Button>
       </header>
 
-      {isAddOpen && !isMobile && (
-        <Card className="border-emerald-500/50">
-          <CardHeader>
-            <CardTitle>{editingAccount ? 'Edit Account' : 'New Account'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AccountForm 
-              onSubmit={handleSubmit(onSubmit)}
-              onCancel={() => {
-                setIsAddOpen(false);
-                setEditingAccount(null);
-                reset();
-              }}
-              register={register}
-              editingAccount={editingAccount}
-              isPending={isPending}
-              errors={errors}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {isAddOpen && isMobile && (
+      {isAddOpen && (
         <Drawer 
           isOpen={isAddOpen} 
           onClose={() => {
