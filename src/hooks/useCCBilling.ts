@@ -30,14 +30,17 @@ export function useCCBilling(creditCardId?: string) {
 
   const markAsPaid = useMutation({
     mutationFn: async ({ creditCardId, statementDate }: { creditCardId: string; statementDate: string }) => {
-      const { error } = await supabase
-        .from('cc_monthly_bills')
-        .update({ status: 'paid' })
-        .match({ credit_card_id: creditCardId, statement_date: statementDate });
+      // Call the custom PostgreSQL function we created earlier
+      const { error } = await supabase.rpc('mark_cc_bill_paid', {
+        p_credit_card_id: creditCardId,
+        p_statement_date: statementDate
+      });
       if (error) throw error;
     },
     onSuccess: () => {
+      // Invalidate both so the UI instantly updates the bill status and transaction details
       queryClient.invalidateQueries({ queryKey: ['cc_monthly_bills'] });
+      queryClient.invalidateQueries({ queryKey: ['cc_transaction_details'] });
     },
   });
 
