@@ -252,6 +252,44 @@ export type Database = {
           },
         ]
       }
+      cc_monthly_bills: {
+        Row: {
+          bill_amount: number | null
+          credit_card_id: string
+          credit_card_name: string | null
+          due_date: string | null
+          statement_date: string
+          user_id: string
+          status: Database["public"]["Enums"]["bill_status"]
+        }
+        Insert: {
+          bill_amount?: number | null
+          credit_card_id: string
+          credit_card_name?: string | null
+          due_date?: string | null
+          statement_date: string
+          user_id: string
+          status?: Database["public"]["Enums"]["bill_status"]
+        }
+        Update: {
+          bill_amount?: number | null
+          credit_card_id?: string
+          credit_card_name?: string | null
+          due_date?: string | null
+          statement_date?: string
+          user_id?: string
+          status?: Database["public"]["Enums"]["bill_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_from_account_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       bank_upcoming_debits: {
@@ -278,25 +316,6 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cc_monthly_bills: {
-        Row: {
-          bill_amount: number | null
-          credit_card_id: string | null
-          credit_card_name: string | null
-          due_date: string | null
-          statement_date: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_from_account_id_fkey"
-            columns: ["credit_card_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -333,6 +352,7 @@ export type Database = {
       account_type: "bank" | "credit_card" | "cash"
       billing_type: "bank" | "cc"
       transaction_status: "posted" | "pending"
+      bill_status: "paid" | "pending"
       transaction_type: "income" | "expense" | "transfer"
       currency_type: "INR" | "USD" | "VND"
     }

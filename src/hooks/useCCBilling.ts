@@ -1,7 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
 export function useCCBilling(creditCardId?: string) {
+  const queryClient = useQueryClient();
+
   const billsQuery = useQuery({
     queryKey: ['cc_monthly_bills', creditCardId],
     queryFn: async () => {
@@ -26,9 +28,23 @@ export function useCCBilling(creditCardId?: string) {
     },
   });
 
+  const markAsPaid = useMutation({
+    mutationFn: async ({ creditCardId, statementDate }: { creditCardId: string; statementDate: string }) => {
+      const { error } = await supabase
+        .from('cc_monthly_bills')
+        .update({ status: 'paid' })
+        .match({ credit_card_id: creditCardId, statement_date: statementDate });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cc_monthly_bills'] });
+    },
+  });
+
   return {
     bills: billsQuery.data ?? [],
     details: detailsQuery.data ?? [],
     isLoading: billsQuery.isLoading || detailsQuery.isLoading,
+    markAsPaid,
   };
 }

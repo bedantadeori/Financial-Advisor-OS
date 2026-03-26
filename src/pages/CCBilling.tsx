@@ -3,15 +3,16 @@ import { useCCBilling } from '../hooks/useCCBilling';
 import { useAccounts } from '../hooks/useAccounts';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Select } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { ChevronDown, ChevronUp, CreditCard, ReceiptText, Calendar, Tag, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, CreditCard, ReceiptText, Calendar, Tag, Info, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function CCBilling() {
   const { activeAccounts } = useAccounts();
   const ccAccounts = activeAccounts.filter(a => a.type === 'credit_card');
   const [selectedCC, setSelectedCC] = useState<string>(ccAccounts[0]?.id || '');
-  const { bills, details } = useCCBilling(selectedCC);
+  const { bills, details, markAsPaid } = useCCBilling(selectedCC);
   const [expandedCycle, setExpandedCycle] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -87,13 +88,21 @@ export default function CCBilling() {
                       <ReceiptText className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-bold">{bill.credit_card_name}</h4>
                         {index === currentCycleIndex && (
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase">
                             Current Cycle
                           </span>
                         )}
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                          bill.status === 'paid' 
+                            ? "bg-emerald-500/10 text-emerald-500" 
+                            : "bg-amber-500/10 text-amber-500"
+                        )}>
+                          {bill.status === 'paid' ? 'PAID' : 'PENDING'}
+                        </span>
                       </div>
                       <p className="text-xs text-zinc-500">
                         Statement: {formatDate(bill.statement_date)} • Due: {formatDate(bill.due_date)}
@@ -111,8 +120,38 @@ export default function CCBilling() {
                 </div>
 
                 {isExpanded && (
-                  <div className="border-t border-zinc-800 p-4 bg-zinc-950/50">
-                    {!isMobile ? (
+                  <div className="border-t border-zinc-800 bg-zinc-950/50">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900/50">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          bill.status === 'paid' ? "bg-emerald-500" : "bg-amber-500"
+                        )} />
+                        <span className="text-xs font-medium text-zinc-300">
+                          Cycle Status: {bill.status === 'paid' ? 'Settled' : 'Awaiting Payment'}
+                        </span>
+                      </div>
+                      {bill.status !== 'paid' && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 gap-1.5 text-xs"
+                          disabled={markAsPaid.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsPaid.mutate({ 
+                              creditCardId: bill.credit_card_id, 
+                              statementDate: bill.statement_date 
+                            });
+                          }}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {markAsPaid.isPending ? 'Marking...' : 'Mark as Paid'}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      {!isMobile ? (
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="text-left text-zinc-500 border-b border-zinc-800">
@@ -161,8 +200,9 @@ export default function CCBilling() {
                       </div>
                     )}
                   </div>
-                )}
-              </Card>
+                </div>
+              )}
+            </Card>
             );
           })}
         </div>
