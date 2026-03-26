@@ -65,13 +65,23 @@ export default function Dashboard() {
   // CC Billing Info
   const today = new Date().toISOString().split('T')[0];
   
-  const currentCycle = [...bills]
-    .filter(b => b.statement_date && b.statement_date >= today)
-    .sort((a, b) => (a.statement_date || '').localeCompare(b.statement_date || ''))[0];
+  const ccAccounts = activeAccounts.filter(a => a.type === 'credit_card');
+  
+  const ccBillingData = useMemo(() => {
+    return ccAccounts.map(account => {
+      const cardBills = bills.filter(b => b.credit_card_id === account.id);
+      
+      const current = [...cardBills]
+        .filter(b => b.statement_date && b.statement_date >= today)
+        .sort((a, b) => (a.statement_date || '').localeCompare(b.statement_date || ''))[0];
+      
+      const upcoming = [...cardBills]
+        .filter(b => b.due_date && b.due_date >= today && b.statement_date && b.statement_date < today)
+        .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))[0];
 
-  const upcomingBill = [...bills]
-    .filter(b => b.due_date && b.due_date >= today && b.statement_date && b.statement_date < today)
-    .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))[0];
+      return { account, current, upcoming };
+    }).filter(d => d.current || d.upcoming);
+  }, [ccAccounts, bills, today]);
 
   const toggleWidget = (id: string) => {
     setVisibleWidgets(prev => 
@@ -202,56 +212,64 @@ export default function Dashboard() {
             <CardTitle>CC Billing Engine</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {currentCycle || upcomingBill ? (
-              <div className="space-y-6">
-                {currentCycle && (
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Current Cycle</p>
-                        <p className="text-3xl font-black font-mono text-emerald-500">
-                          {formatCurrency(currentCycle.bill_amount)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Statement</p>
-                        <p className="text-sm font-bold">{formatDate(currentCycle.statement_date)}</p>
-                      </div>
+            {ccBillingData.length > 0 ? (
+              <div className="space-y-8">
+                {ccBillingData.map(({ account, current, upcoming }) => (
+                  <div key={account.id} className="space-y-4 pb-4 border-b border-zinc-800 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CreditCard className="w-3 h-3 text-zinc-500" />
+                      <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{account.name}</span>
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">
-                        <span>{currentCycle.credit_card_name}</span>
-                        <span>Due {formatDate(currentCycle.due_date)}</span>
+                    {current && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Current Cycle</p>
+                            <p className="text-2xl font-black font-mono text-emerald-500">
+                              {formatCurrency(current.bill_amount)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Statement</p>
+                            <p className="text-xs font-bold">{formatDate(current.statement_date)}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">
+                            <span>Progress to Statement</span>
+                            <span>Due {formatDate(current.due_date)}</span>
+                          </div>
+                          <div className="w-full bg-zinc-800 h-1 rounded-full overflow-hidden">
+                            <div className="bg-emerald-500 h-full w-[45%]" />
+                          </div>
+                        </div>
                       </div>
-                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full w-[45%]" />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                {upcomingBill && (
-                  <div className={cn(
-                    "p-3 rounded-xl border border-zinc-800 bg-zinc-900/30",
-                    !currentCycle && "border-red-500/30 bg-red-500/[0.02]"
-                  )}>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-zinc-800 text-red-500">
-                          <AlertCircle className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Upcoming Bill</p>
-                          <p className="text-sm font-bold">{formatCurrency(upcomingBill.bill_amount)}</p>
+                    {upcoming && (
+                      <div className={cn(
+                        "p-2.5 rounded-lg border border-zinc-800 bg-zinc-900/30",
+                        !current && "border-red-500/30 bg-red-500/[0.02]"
+                      )}>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-md bg-zinc-800 text-red-500">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Upcoming Bill</p>
+                              <p className="text-xs font-bold">{formatCurrency(upcoming.bill_amount)}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Due In</p>
+                            <p className="text-[10px] font-bold text-red-400">{formatDate(upcoming.due_date)}</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Due In</p>
-                        <p className="text-xs font-bold text-red-400">{formatDate(upcomingBill.due_date)}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             ) : (
               <p className="text-sm text-zinc-500">No active billing cycles</p>

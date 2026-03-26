@@ -29,7 +29,8 @@ export default function CCBilling() {
     .sort((a, b) => (a.statement_date || '').localeCompare(b.statement_date || ''))[0];
 
   const currentCycleIndex = bills.findIndex(b => b === closestFutureBill);
-  const finalCurrentCycleIndex = currentCycleIndex === -1 ? 0 : currentCycleIndex;
+  // Default to the most recent bill (index 0) if no future bill is found
+  const selectedBillIndex = currentCycleIndex === -1 ? 0 : currentCycleIndex;
 
   const toggleCycle = (statementDate: string) => {
     setExpandedCycle(expandedCycle === statementDate ? null : statementDate);
@@ -72,7 +73,7 @@ export default function CCBilling() {
             return (
               <Card key={`${bill.credit_card_id}-${bill.statement_date}`} className={cn(
                 "transition-all",
-                index === finalCurrentCycleIndex && "border-emerald-500/30 bg-emerald-500/[0.02]"
+                index === selectedBillIndex && "border-emerald-500/30 bg-emerald-500/[0.02]"
               )}>
                 <div 
                   className="p-4 cursor-pointer flex items-center justify-between"
@@ -81,14 +82,14 @@ export default function CCBilling() {
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "p-2 rounded bg-zinc-800",
-                      index === finalCurrentCycleIndex ? "text-emerald-500" : "text-zinc-400"
+                      index === selectedBillIndex ? "text-emerald-500" : "text-zinc-400"
                     )}>
                       <ReceiptText className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold">{bill.credit_card_name}</h4>
-                        {index === finalCurrentCycleIndex && (
+                        {index === currentCycleIndex && (
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase">
                             Current Cycle
                           </span>
