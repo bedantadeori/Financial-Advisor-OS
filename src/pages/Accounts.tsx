@@ -9,10 +9,10 @@ import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
 import { Drawer } from '../components/ui/Drawer';
 
-function AccountForm({ onSubmit, onCancel, register, editingAccount, isPending, errors }: any) {
+function AccountForm({ id, onSubmit, onCancel, register, editingAccount, isPending, errors, showButtons = true }: any) {
   console.log('AccountForm rendering, isPending:', isPending, 'errors:', errors);
   return (
-    <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <form id={id} onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div className="space-y-1">
         <label className="text-xs text-zinc-500">Name</label>
         <Input {...register('name', { required: 'Name is required' })} placeholder="e.g. HDFC Bank" />
@@ -40,7 +40,7 @@ function AccountForm({ onSubmit, onCancel, register, editingAccount, isPending, 
         <label className="text-xs text-zinc-500">{editingAccount ? 'Balance' : 'Initial Balance'}</label>
         <Input type="number" step="0.01" {...register('balance')} placeholder="0.00" />
       </div>
-      <div className="md:col-span-4 flex justify-end gap-2 pt-4">
+      <div className={cn("md:col-span-4 flex justify-end gap-2 pt-4", !showButtons && "hidden md:flex")}>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Saving...' : 'Save Account'}
@@ -147,7 +147,7 @@ export default function Accounts() {
 
   return (
     <div className="space-y-6">
-      <header className="flex justify-between items-center">
+      <header className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Accounts</h2>
           <p className="text-zinc-500 text-sm">Manage your bank accounts, cards, and cash</p>
@@ -156,7 +156,7 @@ export default function Accounts() {
           setEditingAccount(null);
           reset();
           setIsAddOpen(true);
-        }} className="gap-2">
+        }} className="w-full md:w-auto gap-2">
           <Plus className="w-4 h-4" />
           Add Account
         </Button>
@@ -193,9 +193,34 @@ export default function Accounts() {
             reset();
           }}
           title={editingAccount ? 'Edit Account' : 'New Account'}
+          footer={
+            <div className="flex justify-end gap-2 w-full">
+              <Button 
+                type="button" 
+                variant="secondary" 
+                className="flex-1"
+                onClick={() => {
+                  setIsAddOpen(false);
+                  setEditingAccount(null);
+                  reset();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                form="account-form" 
+                className="flex-1"
+                disabled={isPending}
+              >
+                {isPending ? 'Saving...' : 'Save Account'}
+              </Button>
+            </div>
+          }
         >
           <div className="pt-4">
             <AccountForm 
+              id="account-form"
               onSubmit={handleSubmit(onSubmit)}
               onCancel={() => {
                 setIsAddOpen(false);
@@ -206,6 +231,7 @@ export default function Accounts() {
               editingAccount={editingAccount}
               isPending={isPending}
               errors={errors}
+              showButtons={false}
             />
           </div>
         </Drawer>

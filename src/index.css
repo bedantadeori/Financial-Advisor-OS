@@ -5,3 +5,9 @@
     @apply bg-zinc-950;
   }
 }
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

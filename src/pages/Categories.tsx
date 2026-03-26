@@ -9,14 +9,14 @@ import { useForm } from 'react-hook-form';
 import { cn } from '../lib/utils';
 import { Drawer } from '../components/ui/Drawer';
 
-function CategoryForm({ onSubmit, onCancel, register, editingCategory, isPending }: any) {
+function CategoryForm({ id, onSubmit, onCancel, register, editingCategory, isPending, showButtons = true }: any) {
   return (
-    <form onSubmit={onSubmit} className="flex flex-col md:flex-row gap-4">
+    <form id={id} onSubmit={onSubmit} className="flex flex-col md:flex-row gap-4">
       <div className="flex-1 space-y-1">
         <label className="text-xs text-zinc-500 md:hidden">Category Name</label>
         <Input {...register('name', { required: true })} placeholder="e.g. Groceries" />
       </div>
-      <div className="flex gap-2 justify-end">
+      <div className={cn("flex gap-2 justify-end", !showButtons && "hidden md:flex")}>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Saving...' : 'Save'}
@@ -86,7 +86,7 @@ export default function Categories() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <header className="flex justify-between items-center">
+      <header className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Categories</h2>
           <p className="text-zinc-500 text-sm">Organize your spending</p>
@@ -95,7 +95,7 @@ export default function Categories() {
           setEditingCategory(null);
           reset();
           setIsAddOpen(true);
-        }} className="gap-2">
+        }} className="w-full md:w-auto gap-2">
           <Plus className="w-4 h-4" />
           Add Category
         </Button>
@@ -131,9 +131,34 @@ export default function Categories() {
             reset();
           }}
           title={editingCategory ? 'Edit Category' : 'New Category'}
+          footer={
+            <div className="flex justify-end gap-2 w-full">
+              <Button 
+                type="button" 
+                variant="secondary" 
+                className="flex-1"
+                onClick={() => {
+                  setIsAddOpen(false);
+                  setEditingCategory(null);
+                  reset();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                form="category-form" 
+                className="flex-1"
+                disabled={isPending}
+              >
+                {isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          }
         >
-          <div className="p-4">
+          <div className="pt-4">
             <CategoryForm 
+              id="category-form"
               onSubmit={handleSubmit(onSubmit)}
               onCancel={() => {
                 setIsAddOpen(false);
@@ -143,6 +168,7 @@ export default function Categories() {
               register={register}
               editingCategory={editingCategory}
               isPending={isPending}
+              showButtons={false}
             />
           </div>
         </Drawer>

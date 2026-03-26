@@ -128,8 +128,16 @@ export default function Dashboard() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         title="Customize Dashboard"
+        footer={
+          <Button 
+            onClick={() => setIsSettingsOpen(false)} 
+            className="w-full"
+          >
+            Close
+          </Button>
+        }
       >
-        <div className="space-y-6 pt-4 pb-20">
+        <div className="space-y-6 pt-4 pb-4">
           {Object.entries(groupedOptions).map(([group, options]) => (
             <div key={group} className="space-y-2">
               <h3 className="text-[10px] uppercase font-black text-zinc-500 tracking-widest px-1">{group}</h3>
