@@ -22,6 +22,15 @@ export function Drawer({
   className,
   footer,
 }: DrawerProps) {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Prevent scrolling when drawer is open
   React.useEffect(() => {
     if (isOpen) {
@@ -44,31 +53,35 @@ export function Drawer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
 
           {/* Drawer */}
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            initial={isMobile ? { y: '100%', x: 0 } : { x: '100%', y: 0 }}
+            animate={{ y: 0, x: 0 }}
+            exit={isMobile ? { y: '100%', x: 0 } : { x: '100%', y: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className={cn(
-              "fixed inset-x-0 bottom-0 z-50 bg-zinc-900 border-t border-zinc-800 rounded-t-[32px] max-h-[92vh] flex flex-col md:hidden shadow-2xl",
+              "fixed z-50 bg-zinc-900 shadow-2xl flex flex-col",
+              // Mobile styles (bottom sheet)
+              "inset-x-0 bottom-0 rounded-t-[32px] max-h-[92vh]",
+              // Desktop styles (side sheet)
+              "md:inset-y-0 md:right-0 md:left-auto md:w-[400px] md:max-h-none md:rounded-l-[32px] md:rounded-tr-none md:border-l md:border-zinc-800",
               className
             )}
           >
             {/* Background extension for mobile safe areas/gaps */}
-            <div className="absolute top-full left-0 right-0 h-screen bg-zinc-900" />
+            <div className="absolute top-full left-0 right-0 h-screen bg-zinc-900 md:hidden" />
 
-            {/* Handle */}
-            <div className="flex justify-center p-4 shrink-0">
+            {/* Handle (Mobile only) */}
+            <div className="flex justify-center p-4 shrink-0 md:hidden">
               <div className="w-12 h-1.5 bg-zinc-700 rounded-full" />
             </div>
 
             {/* Header */}
             {(title || description) && (
-              <div className="px-6 pb-4 shrink-0">
+              <div className="px-6 pb-4 shrink-0 pt-6 md:pt-10">
                 {title && <h2 className="text-xl font-bold text-zinc-100">{title}</h2>}
                 {description && <p className="text-sm text-zinc-500 mt-1">{description}</p>}
               </div>
@@ -89,11 +102,11 @@ export function Drawer({
 
             {/* Footer */}
             {footer && (
-              <div className="px-6 pb-[env(safe-area-inset-bottom,24px)] pt-4 border-t border-zinc-800 bg-zinc-900 shrink-0">
+              <div className="px-6 pb-[env(safe-area-inset-bottom,24px)] pt-4 border-t border-zinc-800 bg-zinc-900 shrink-0 md:pb-8">
                 {footer}
               </div>
             )}
-            {!footer && <div className="h-[env(safe-area-inset-bottom,24px)] shrink-0" />}
+            {!footer && <div className="h-[env(safe-area-inset-bottom,24px)] shrink-0 md:h-8" />}
           </motion.div>
         </>
       )}
